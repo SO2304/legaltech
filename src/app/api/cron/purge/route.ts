@@ -66,7 +66,6 @@ export async function GET(request: NextRequest) {
           clientAddress: null,
           clientCity: null,
           caseDescription: null,
-          clientAnalysis: null,
         },
       })
       

@@ -44,7 +44,11 @@ export async function POST(request: NextRequest) {
     }
     
     // Traiter chaque fichier
-    const uploadedDocuments = []
+    const uploadedDocuments: Array<{
+      id: string
+      originalName: string
+      size: number
+    }> = []
     
     for (const file of files) {
       // Lire le fichier en buffer
@@ -77,7 +81,11 @@ export async function POST(request: NextRequest) {
         },
       })
       
-      uploadedDocuments.push(document)
+      uploadedDocuments.push({
+        id: document.id,
+        originalName: document.originalName,
+        size: document.size,
+      })
     }
     
     // Mettre à jour le statut du dossier
