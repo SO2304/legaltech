@@ -49,3 +49,17 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Database
+db/
+*.db
+*.db-journal
+prisma/dev.db
+prisma/*.db
+
+# Uploads
+uploads/
+
+# Agent context
+/agent-ctx/
+worklog.md

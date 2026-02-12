@@ -1,8 +1,7 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// ============================================
+// DIVORCE SAAS LEGALTECH - SCHEMA PRISMA
+// SQLite (dev)
+// ============================================
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +12,262 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// --------------------------------------------
+// AVOCAT (Multi-tenant)
+// --------------------------------------------
+model Avocat {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  email           String   @unique
+  passwordHash    String
+  nom             String
+  prenom          String
+  cabinet         String?
+  adresse         String?
+  codePostal      String?
+  ville           String?
+  telephone       String?
+  totpSecret      String?
+  webhookSecret   String   @default(cuid())
+  commissionRate  Float    @default(20.0)
+  isActive        Boolean  @default(true)
+  emailVerified   DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  dossiers        Dossier[]
+  commissions     Commission[]
+  documents       Document[]
+
+  @@index([slug])
+  @@index([email])
+  @@map("avocats")
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// --------------------------------------------
+// CLIENT
+// --------------------------------------------
+model Client {
+  id              String   @id @default(cuid())
+  email           String
+  telephone       String?
+  nom             String
+  prenom          String
+  dateNaissance   DateTime?
+  lieuNaissance   String?
+  adresse         String?
+  codePostal      String?
+  ville           String?
+  profession      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  dossiers        Dossier[]
+
+  @@index([email])
+  @@map("clients")
+}
+
+// --------------------------------------------
+// DOSSIER DE DIVORCE
+// --------------------------------------------
+model Dossier {
+  id                    String          @id @default(cuid())
+  reference             String          @unique
+  statut                DossierStatus   @default(BROUILLON)
+  
+  typeProcedure         TypeProcedure   @default(CONSENTEMENT_MUTUEL)
+  regimeMatrimonial     RegimeMatrimonial @default(COMMUNAUTE_REDUITE_ACQUETS)
+  dateMariage           DateTime?
+  lieuMariage           String?
+  dateSeparation        DateTime?
+  motifDivorce          String?
+  
+  conjoint              String?
+  enfants               String?
+  patrimoine            String?
+  pensions              String?
+  
+  analyseIA             String?
+  syntheseHTML          String?
+  
+  dateSoumission        DateTime?
+  dateAnalyse           DateTime?
+  dateNotification      DateTime?
+  datePurge             DateTime?
+  
+  montantEstime         Float?
+  commissionDue         Float?
+  
+  consentementRGPD      Boolean         @default(false)
+  dateConsentement      DateTime?
+  ipConsentement        String?
+  
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  
+  avocatId              String
+  avocat                Avocat          @relation(fields: [avocatId], references: [id], onDelete: Cascade)
+  clientId              String
+  client                Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  documents             Document[]
+  webhookEvents         WebhookEvent[]
+  commission            Commission?
+
+  @@index([reference])
+  @@index([statut])
+  @@index([avocatId])
+  @@map("dossiers")
+}
+
+// --------------------------------------------
+// DOCUMENT
+// --------------------------------------------
+model Document {
+  id                    String          @id @default(cuid())
+  type                  DocumentType
+  nomOriginal           String
+  nomStockage           String
+  mimeType              String
+  taille                Int
+  hash                  String
+  cheminStockage        String
+  estChiffre            Boolean         @default(true)
+  
+  metadonneesIA         String?
+  
+  dateUpload            DateTime        @default(now())
+  datePurge             DateTime
+  estPurge              Boolean         @default(false)
+  datePurgeEffective    DateTime?
+  
+  createdAt             DateTime        @default(now())
+  
+  dossierId             String
+  dossier               Dossier         @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+  avocatId              String
+  avocat                Avocat          @relation(fields: [avocatId], references: [id], onDelete: Cascade)
+
+  @@index([datePurge])
+  @@index([dossierId])
+  @@map("documents")
+}
+
+// --------------------------------------------
+// COMMISSION
+// --------------------------------------------
+model Commission {
+  id                    String          @id @default(cuid())
+  montant               Float
+  taux                  Float
+  statut                CommissionStatus @default(EN_ATTENTE)
+  dateCalcul            DateTime        @default(now())
+  datePaiement          DateTime?
+  referencePaiement     String?
+  notes                 String?
+  
+  avocatId              String
+  avocat                Avocat          @relation(fields: [avocatId], references: [id], onDelete: Cascade)
+  dossierId             String          @unique
+  dossier               Dossier         @relation(fields: [dossierId], references: [id])
+
+  @@index([avocatId])
+  @@index([statut])
+  @@map("commissions")
+}
+
+// --------------------------------------------
+// WEBHOOK EVENT
+// --------------------------------------------
+model WebhookEvent {
+  id                    String          @id @default(cuid())
+  type                  WebhookEventType
+  payload               String
+  response              String?
+  statut                WebhookStatus   @default(RECU)
+  erreur                String?
+  tempsTraitement       Int?
+  
+  receivedAt            DateTime        @default(now())
+  processedAt           DateTime?
+  
+  dossierId             String
+  dossier               Dossier         @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+
+  @@index([type])
+  @@index([receivedAt])
+  @@map("webhook_events")
+}
+
+// --------------------------------------------
+// ENUMS
+// --------------------------------------------
+enum DossierStatus {
+  BROUILLON
+  EN_ATTENTE
+  EN_ANALYSE
+  ANALYSE_TERMINEE
+  NOTIFIE
+  ARCHIVE
+  PURGE
+}
+
+enum TypeProcedure {
+  CONSENTEMENT_MUTUEL
+  ACCEPTATION_PRINCIPE
+  FAUTE
+  RUPTURE_VIE_COMMUNE
+}
+
+enum RegimeMatrimonial {
+  COMMUNAUTE_REDUITE_ACQUETS
+  COMMUNAUTE_UNIVERSELLE
+  SEPARATION_DE_BIENS
+  PARTICIPATION_AUX_ACQUETS
+  INDETERMINE
+}
+
+enum DocumentType {
+  CARTE_IDENTITE_EPOUX
+  CARTE_IDENTITE_EPOUSE
+  PASSEPORT_EPOUX
+  PASSEPORT_EPOUSE
+  ACTE_MARIAGE
+  LIVRET_FAMILLE
+  ACTE_NAISSANCE_ENFANTS
+  BULLETIN_SALAIRE_EPOUX
+  BULLETIN_SALAIRE_EPOUSE
+  AVIS_IMPOSITION
+  DECLARATION_IMPOTS
+  TITRE_PROPRIETE
+  HYPOTHEQUE
+  RELEVE_BANCAIRE
+  RELEVE_EPARGNE
+  RELEVE_ASSURANCE_VIE
+  PRET_IMMOBILIER
+  PRET_CONSOMMATION
+  DETTES
+  AUTRE
+}
+
+enum CommissionStatus {
+  EN_ATTENTE
+  FACTUREE
+  PAYEE
+  ANNULEE
+}
+
+enum WebhookEventType {
+  DOSSIER_SUBMIT
+  ANALYSIS_COMPLETE
+  EMAIL_SENT
+  DOCUMENT_PROCESSED
+  ERROR
+}
+
+enum WebhookStatus {
+  RECU
+  EN_TRAITEMENT
+  TRAITE
+  ERREUR
 }
