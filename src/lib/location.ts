@@ -3,7 +3,8 @@
 // Détection du pays via IP et téléphone
 // ============================================
 
-import type { CountryCode, CountryConfig, COUNTRY_CONFIGS } from './countries'
+import type { CountryCode, CountryConfig } from './countries'
+import { COUNTRY_CONFIGS } from './countries'
 
 // Indicatifs téléphoniques par pays
 const PHONE_PREFIXES: Record<string, CountryCode> = {
@@ -193,6 +194,5 @@ export function formatPrice(amountCents: number, country: CountryCode): string {
  * Obtient la configuration complète d'un pays
  */
 export function getCountryConfig(country: CountryCode): CountryConfig {
-  const configs = require('./countries').COUNTRY_CONFIGS
-  return configs[country]
+  return COUNTRY_CONFIGS[country]
 }
