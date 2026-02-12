@@ -2,7 +2,8 @@
 
 // ============================================
 // FLASHJURIS - LANDING PAGE
-// "Scan-to-Report" pour avocats
+// Service 100% gratuit pour les avocats
+// Client paie 149€ unique
 // ============================================
 
 import { useState } from 'react'
@@ -12,7 +13,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { 
   QrCode, 
   Mail, 
-  Sparkles, 
   Clock, 
   Shield, 
   Zap,
@@ -20,7 +20,9 @@ import {
   ArrowRight,
   FileText,
   Send,
-  Loader2
+  Loader2,
+  Banknote,
+  Lock
 } from 'lucide-react'
 
 export default function FlashJurisLanding() {
@@ -61,13 +63,21 @@ export default function FlashJurisLanding() {
               <CheckCircle className="w-10 h-10 text-green-600" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Bienvenue sur FlashJuris !
+              QR Code envoyé !
             </h1>
             <p className="text-gray-600 mb-4">
-              Votre QR Code personnalisé vous a été envoyé à <strong>{email}</strong>
+              Votre QR Code personnel vous a été envoyé à <strong>{email}</strong>
             </p>
+            <div className="bg-green-50 rounded-xl p-4 mb-4">
+              <p className="text-green-800 font-medium text-sm">
+                ✅ Service 100% GRATUIT pour vous
+              </p>
+              <p className="text-green-600 text-xs mt-1">
+                Vos clients paient 149€ et vous touchez 20% de commission
+              </p>
+            </div>
             <p className="text-sm text-gray-500">
-              Imprimez-le et posez-le sur votre bureau pour recevoir les documents de vos clients.
+              Imprimez le QR Code et posez-le sur votre bureau.
             </p>
           </CardContent>
         </Card>
@@ -86,36 +96,45 @@ export default function FlashJurisLanding() {
             </div>
             <span className="font-bold text-xl text-gray-900">FlashJuris</span>
           </div>
-          <nav className="hidden md:flex items-center gap-6">
-            <a href="#comment" className="text-gray-600 hover:text-gray-900 text-sm">Comment ça marche</a>
-            <a href="#tarifs" className="text-gray-600 hover:text-gray-900 text-sm">Tarifs</a>
-            <Button variant="outline" size="sm">Connexion</Button>
-          </nav>
+          <div className="flex items-center gap-3">
+            <span className="hidden md:inline text-sm text-gray-500">
+              Service 100% gratuit pour les avocats
+            </span>
+            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
+              GRATUIT
+            </span>
+          </div>
         </div>
       </header>
       
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-4 pt-20 pb-16">
+      <section className="max-w-6xl mx-auto px-4 pt-16 pb-12">
         <div className="text-center max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
             <QrCode className="w-4 h-4" />
-            Scan-to-Report
+            Flash Juridique
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
             Recevez les documents de vos clients
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600"> en un scan</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600"> en 1 scan</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Donnez-nous votre email, nous vous envoyons votre QR Code. 
-            Vos clients scannent, vous recevez une analyse IA directement dans votre boîte mail.
+          <p className="text-xl text-gray-600 mb-4">
+            <strong className="text-gray-900">Gratuit pour vous.</strong> Votre client paie 149€ et vous touchez 20% de commission.
+          </p>
+          <p className="text-gray-500 text-sm mb-8">
+            Zéro compte à gérer. Zéro dashboard. Juste un QR code et votre email.
           </p>
           
           {/* Formulaire d'inscription */}
           <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl p-6 border">
+            <div className="text-center mb-4">
+              <span className="text-3xl font-bold text-gray-900">0€</span>
+              <span className="text-gray-500 text-sm ml-1">/ vie</span>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
                 type="text"
-                placeholder="Votre nom"
+                placeholder="Votre nom (Me Dupont)"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="h-12 rounded-xl"
@@ -137,107 +156,140 @@ export default function FlashJurisLanding() {
                 {submitting ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Création en cours...
+                    Création...
                   </>
                 ) : (
                   <>
-                    Recevoir mon QR Code
+                    Recevoir mon QR Code gratuit
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </>
                 )}
               </Button>
             </form>
             <p className="text-xs text-gray-500 mt-4 text-center">
-              Gratuit • Sans engagement • Prêt en 30 secondes
+              ✓ QR Code instantané par email<br/>
+              ✓ Aucun engagement • Aucun paiement requis
             </p>
           </div>
         </div>
       </section>
       
-      {/* Processus */}
-      <section id="comment" className="py-16 bg-white">
+      {/* Comment ça marche */}
+      <section className="py-12 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
             Comment ça marche ?
           </h2>
-          <p className="text-gray-600 text-center mb-12 max-w-2xl mx-auto">
-            Zéro dashboard à gérer. Zéro application à télécharger. 
-            Juste un QR code et votre email.
+          <p className="text-gray-600 text-center mb-10 max-w-2xl mx-auto">
+            Simple, rapide, sécurisé. Vous n'avez rien à gérer.
           </p>
           
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200">
-                <Mail className="w-8 h-8 text-white" />
+          <div className="grid md:grid-cols-4 gap-6">
+            {[
+              { icon: Mail, title: '1. QR Code', desc: 'Vous recevez votre QR code par email', color: 'blue' },
+              { icon: QrCode, title: '2. Client scanne', desc: 'Il paie 149€ et upload ses documents', color: 'indigo' },
+              { icon: Send, title: '3. Vous recevez', desc: 'Documents en ZIP directement par email', color: 'purple' },
+              { icon: Banknote, title: '4. Commission', desc: 'Vous touchez 29,80€ (20%)', color: 'green' },
+            ].map((item, i) => (
+              <div key={i} className="text-center">
+                <div className={`w-14 h-14 bg-${item.color}-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg`}>
+                  <item.icon className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-1">{item.title}</h3>
+                <p className="text-gray-600 text-sm">{item.desc}</p>
               </div>
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 font-bold">1</div>
-              <h3 className="font-semibold text-gray-900 mb-2">Vous recevez votre QR Code</h3>
-              <p className="text-gray-600 text-sm">
-                Par email, prêt à imprimer. Posez-le sur votre bureau.
-              </p>
+            ))}
+          </div>
+        </div>
+      </section>
+      
+      {/* Pricing pour le client */}
+      <section className="py-12 bg-gradient-to-br from-gray-900 to-gray-800">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-white mb-2">
+              Tarif unique pour votre client
+            </h2>
+            <p className="text-gray-400">
+              Transparent et sans surprise
+            </p>
+          </div>
+          
+          <div className="max-w-sm mx-auto bg-white rounded-2xl p-8 text-center shadow-2xl">
+            <div className="mb-4">
+              <span className="text-5xl font-bold text-gray-900">149€</span>
+              <span className="text-gray-500 ml-2">unique</span>
+            </div>
+            <p className="text-gray-600 text-sm mb-6">
+              Payé par le client lors du dépôt
+            </p>
+            
+            <div className="space-y-3 text-left mb-6">
+              <div className="flex items-center gap-2 text-gray-700 text-sm">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Upload illimité de documents
+              </div>
+              <div className="flex items-center gap-2 text-gray-700 text-sm">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Envoi sécurisé à l'avocat
+              </div>
+              <div className="flex items-center gap-2 text-gray-700 text-sm">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Documents supprimés après 7 jours
+              </div>
+              <div className="flex items-center gap-2 text-gray-700 text-sm">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Conformité RGPD garantie
+              </div>
             </div>
             
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-200">
-                <QrCode className="w-8 h-8 text-white" />
-              </div>
-              <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600 font-bold">2</div>
-              <h3 className="font-semibold text-gray-900 mb-2">Le client scanne</h3>
-              <p className="text-gray-600 text-sm">
-                Il remplit ses infos et upload ses documents en 2 minutes.
+            <div className="bg-green-50 rounded-xl p-4">
+              <p className="text-green-800 font-medium text-sm">
+                💰 Vous touchez 29,80€ de commission
               </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-purple-200">
-                <Send className="w-8 h-8 text-white" />
-              </div>
-              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 text-purple-600 font-bold">3</div>
-              <h3 className="font-semibold text-gray-900 mb-2">Vous recevez le rapport</h3>
-              <p className="text-gray-600 text-sm">
-                Analyse IA complète envoyée directement dans votre boîte mail.
-              </p>
+              <p className="text-green-600 text-xs">(20% du prix client)</p>
             </div>
           </div>
         </div>
       </section>
       
       {/* Avantages */}
-      <section className="py-16 bg-gradient-to-br from-blue-50 to-indigo-50">
+      <section className="py-12">
         <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            Pourquoi les avocats adorent FlashJuris
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-10">
+            Pourquoi les avocats choisissent FlashJuris
           </h2>
           
           <div className="grid md:grid-cols-3 gap-6">
-            <Card className="border-none shadow-lg bg-white/80 backdrop-blur">
+            <Card className="border-none shadow-lg bg-white">
               <CardContent className="p-6">
                 <Clock className="w-10 h-10 text-blue-600 mb-4" />
                 <h3 className="font-semibold text-gray-900 mb-2">Gain de temps</h3>
                 <p className="text-gray-600 text-sm">
-                  Plus d'emails avec des pièces jointes éparpillées. 
-                  Tout arrive centralisé et analysé.
+                  Plus d'emails avec pièces jointes éparpillées. 
+                  Tout arrive centralisé en ZIP.
                 </p>
               </CardContent>
             </Card>
             
-            <Card className="border-none shadow-lg bg-white/80 backdrop-blur">
-              <CardContent className="p-6">
-                <Sparkles className="w-10 h-10 text-purple-600 mb-4" />
-                <h3 className="font-semibold text-gray-900 mb-2">Analyse IA incluse</h3>
-                <p className="text-gray-600 text-sm">
-                  Chaque dossier est pré-analysé par notre IA. 
-                  Points clés, risques, recommandations.
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-none shadow-lg bg-white/80 backdrop-blur">
+            <Card className="border-none shadow-lg bg-white">
               <CardContent className="p-6">
                 <Shield className="w-10 h-10 text-green-600 mb-4" />
-                <h3 className="font-semibold text-gray-900 mb-2">RGPD ready</h3>
+                <h3 className="font-semibold text-gray-900 mb-2">Sécurité RGPD</h3>
                 <p className="text-gray-600 text-sm">
-                  Documents chiffrés et supprimés automatiquement après 30 jours.
+                  Documents chiffrés et supprimés automatiquement 
+                  après 7 jours. Zéro gestion.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-none shadow-lg bg-white">
+              <CardContent className="p-6">
+                <Banknote className="w-10 h-10 text-purple-600 mb-4" />
+                <h3 className="font-semibold text-gray-900 mb-2">Revenus passifs</h3>
+                <p className="text-gray-600 text-sm">
+                  20% de commission sur chaque dossier. 
+                  Vous n'avez rien à facturer.
                 </p>
               </CardContent>
             </Card>
@@ -245,88 +297,41 @@ export default function FlashJurisLanding() {
         </div>
       </section>
       
-      {/* Tarifs */}
-      <section id="tarifs" className="py-16 bg-white">
+      {/* Sécurité */}
+      <section className="py-12 bg-blue-50">
         <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
-            Tarifs simples
-          </h2>
-          <p className="text-gray-600 text-center mb-12">
-            Payez uniquement ce que vous utilisez
-          </p>
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <Lock className="w-8 h-8 text-blue-600" />
+            <h2 className="text-2xl font-bold text-gray-900">Sécurité maximale</h2>
+          </div>
           
-          <div className="grid md:grid-cols-2 gap-8">
-            <Card className="border-2 border-gray-200 rounded-2xl overflow-hidden">
-              <CardContent className="p-8">
-                <h3 className="font-bold text-xl text-gray-900 mb-2">Découverte</h3>
-                <div className="mb-4">
-                  <span className="text-4xl font-bold">Gratuit</span>
-                </div>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-center gap-2 text-gray-600 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    5 analyses par mois
-                  </li>
-                  <li className="flex items-center gap-2 text-gray-600 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    QR Code personnalisé
-                  </li>
-                  <li className="flex items-center gap-2 text-gray-600 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Rapports par email
-                  </li>
-                </ul>
-                <Button variant="outline" className="w-full rounded-xl">
-                  Commencer gratuitement
-                </Button>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-2 border-blue-500 rounded-2xl overflow-hidden relative">
-              <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-3 py-1 rounded-bl-lg">
-                Populaire
-              </div>
-              <CardContent className="p-8">
-                <h3 className="font-bold text-xl text-gray-900 mb-2">Pro</h3>
-                <div className="mb-4">
-                  <span className="text-4xl font-bold">19€</span>
-                  <span className="text-gray-600">/mois</span>
-                </div>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-center gap-2 text-gray-600 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Analyses illimitées
-                  </li>
-                  <li className="flex items-center gap-2 text-gray-600 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Support prioritaire
-                  </li>
-                  <li className="flex items-center gap-2 text-gray-600 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Historique des dossiers
-                  </li>
-                  <li className="flex items-center gap-2 text-gray-600 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Exports PDF personnalisés
-                  </li>
-                </ul>
-                <Button className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600">
-                  Passer au Pro
-                </Button>
-              </CardContent>
-            </Card>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl p-6">
+              <h3 className="font-semibold text-gray-900 mb-2">🗑️ Purge automatique J+7</h3>
+              <p className="text-gray-600 text-sm">
+                Les données client sont automatiquement supprimées après 7 jours. 
+                Pas de stockage inutile.
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-6">
+              <h3 className="font-semibold text-gray-900 mb-2">📧 Email non ouvert</h3>
+              <p className="text-gray-600 text-sm">
+                Si vous n'ouvrez pas l'email dans les 7 jours, 
+                les données sont supprimées par sécurité.
+              </p>
+            </div>
           </div>
         </div>
       </section>
       
       {/* CTA Final */}
-      <section className="py-16 bg-gradient-to-r from-blue-600 to-indigo-600">
+      <section className="py-12 bg-gradient-to-r from-blue-600 to-indigo-600">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">
-            Prêt à simplifier la réception de vos documents ?
+            Prêt à recevoir vos documents en 1 scan ?
           </h2>
           <p className="text-blue-100 mb-8">
-            Rejoignez les avocats qui gagnent du temps avec FlashJuris
+            Service 100% gratuit • Commission 20% sur chaque dossier
           </p>
           <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
             <Input
@@ -338,7 +343,7 @@ export default function FlashJurisLanding() {
               required
             />
             <Button type="submit" variant="secondary" className="h-12 px-8 rounded-xl font-semibold">
-              C'est parti !
+              C'est gratuit !
             </Button>
           </form>
         </div>
@@ -353,7 +358,7 @@ export default function FlashJurisLanding() {
               <span className="font-semibold">FlashJuris</span>
             </div>
             <p className="text-sm text-gray-400">
-              © 2024 FlashJuris. Analyse juridique intelligente.
+              © 2024 FlashJuris. Transfert sécurisé de documents juridiques.
             </p>
           </div>
         </div>

@@ -23,17 +23,22 @@ async function main() {
       name: 'Maître Jean Dupont',
       firm: 'Cabinet Dupont & Associés',
       phone: '01 23 45 67 89',
-      city: 'Paris',
       qrCodeUrl: qrCode.url,
       qrCodeImage: qrCode.imageBase64,
-      plan: 'pro',
+      commissionRate: 20.0,
+      isActive: true,
     },
   })
   
   console.log(`✅ Created demo lawyer: ${lawyer.name}`)
+  console.log(`   Email: ${lawyer.email}`)
   console.log(`   QR Code URL: ${qrCode.url}`)
+  console.log(`   Commission: ${lawyer.commissionRate}%`)
   
-  // Créer un dossier de test
+  // Créer un dossier de test avec purge à J+7
+  const purgeAt = new Date()
+  purgeAt.setDate(purgeAt.getDate() + 7)
+  
   const testCase = await prisma.case.create({
     data: {
       reference: 'FJ-DEMO001',
@@ -43,48 +48,24 @@ async function main() {
       clientPhone: '06 12 34 56 78',
       caseType: 'Divorce',
       caseDescription: 'Dossier de test pour démonstration',
-      status: 'completed',
+      status: 'sent',
+      paymentStatus: 'succeeded',
+      commissionAmount: 2980, // 20% de 149€ = 29.80€
+      purgeAt,
+      emailSentAt: new Date(),
     },
   })
   
   console.log(`✅ Created test case: ${testCase.reference}`)
-  
-  // Créer une analyse de test
-  const analysis = await prisma.analysis.create({
-    data: {
-      caseId: testCase.id,
-      summary: 'Dossier de divorce par consentement mutuel. Les deux parties sont d\'accord sur les modalités de séparation.',
-      keyPoints: JSON.stringify([
-        'Mariage célébré le 15/03/2010 à Paris',
-        '2 enfants nés de l\'union',
-        'Résidence principale à Paris 16ème',
-        'Régime matrimonial: communauté réduite aux acquêts',
-      ]),
-      risks: JSON.stringify([
-        'Désaccord potentiel sur la résidence des enfants',
-        'Évaluation du patrimoine immobilier à vérifier',
-      ]),
-      recommendations: JSON.stringify([
-        'Proposer une médiation familiale',
-        'Faire évaluer le bien immobilier par un expert',
-        'Prévoir une pension alimentaire provisoire',
-      ]),
-      nextSteps: JSON.stringify([
-        'Prendre rendez-vous avec les deux époux',
-        'Demander les documents complémentaires',
-        'Rédiger la convention de divorce',
-      ]),
-      status: 'completed',
-      completedAt: new Date(),
-    },
-  })
-  
-  console.log(`✅ Created test analysis`)
+  console.log(`   Commission: ${(testCase.commissionAmount / 100).toFixed(2)}€`)
+  console.log(`   Purge le: ${purgeAt.toLocaleDateString('fr-FR')}`)
   
   console.log('\n🎉 Seeding complete!')
   console.log('\n📋 Demo credentials:')
   console.log('   Lawyer ID: demo-lawyer')
   console.log('   Scan URL: http://localhost:3000/scan/demo-lawyer')
+  console.log('   Price: 149€ (client)')
+  console.log('   Commission: 29.80€ (20%)')
 }
 
 main()

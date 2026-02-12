@@ -15,6 +15,7 @@ datasource db {
 
 // ============================================
 // AVOCAT / LAWYER
+// Pas de compte - juste email et QR code
 // ============================================
 model Lawyer {
   id            String   @id @default(cuid())
@@ -22,20 +23,18 @@ model Lawyer {
   name          String
   firm          String?
   phone         String?
-  address       String?
-  city          String?
   
   // QR Code
   qrCodeUrl     String   @unique
   qrCodeImage   String?
   
+  // Commission Stripe
+  stripeAccountId  String?  // Compte Stripe Connect
+  stripeOnboarded  Boolean  @default(false)
+  commissionRate   Float    @default(20.0)  // 20% de commission
+  
   // Statut
   isActive      Boolean  @default(true)
-  emailVerified DateTime?
-  
-  // Tarification
-  plan         String   @default("free")
-  pricePerCase Int      @default(0)
   
   // Dates
   createdAt     DateTime @default(now())
@@ -43,7 +42,6 @@ model Lawyer {
   
   // Relations
   cases         Case[]
-  payments      Payment[]
   
   @@index([email])
   @@index([qrCodeUrl])
@@ -51,6 +49,7 @@ model Lawyer {
 
 // ============================================
 // DOSSIER CLIENT / CASE
+// Purge automatique après 7 jours
 // ============================================
 model Case {
   id          String      @id @default(cuid())
@@ -60,7 +59,7 @@ model Case {
   lawyerId    String
   lawyer      Lawyer      @relation(fields: [lawyerId], references: [id])
   
-  // Données client
+  // Données client (purgeables)
   clientName      String?
   clientEmail     String?
   clientPhone     String?
@@ -73,17 +72,30 @@ model Case {
   documents   Document[]
   
   // Statut
-  status      String      @default("pending")
+  status      String      @default("pending")  // pending, paid, sent, purged
   
-  // Analyse IA
-  analysis    Analysis?
+  // Paiement client (149€)
+  stripePaymentIntent String?
+  paymentStatus       String    @default("pending")  // pending, succeeded, failed
+  paidAt              DateTime?
   
-  // Paiement
-  payment     Payment?
+  // Commission avocat (20%)
+  commissionAmount    Int       @default(0)  // En centimes (20% de 149€ = 29.80€ = 2980 centimes)
+  commissionPaid      Boolean   @default(false)
+  commissionPaidAt    DateTime?
   
-  // Rapport
-  reportUrl   String?
-  reportSentAt DateTime?
+  // Email envoyé à l'avocat
+  emailSentAt         DateTime?
+  emailOpened         Boolean   @default(false)
+  emailOpenedAt       DateTime?
+  
+  // Purge automatique J+7
+  purgeAt             DateTime  // Date de purge programmée
+  purgedAt            DateTime? // Date de purge effective
+  isPurged            Boolean   @default(false)
+  
+  // Analyse IA pour le CLIENT uniquement (optionnel)
+  clientAnalysis      String?
   
   // Dates
   createdAt   DateTime    @default(now())
@@ -92,10 +104,13 @@ model Case {
   @@index([lawyerId])
   @@index([status])
   @@index([reference])
+  @@index([purgeAt])
+  @@index([isPurged])
 }
 
 // ============================================
 // DOCUMENT
+// Purge automatique J+7
 // ============================================
 model Document {
   id          String    @id @default(cuid())
@@ -108,82 +123,21 @@ model Document {
   mimeType    String
   size        Int
   
-  // Stockage
+  // Stockage temporaire
   storagePath String
-  publicUrl   String?
-  
-  // Analyse
-  ocrText     String?
-  isAnalyzed  Boolean   @default(false)
+  fileData    String?   // Base64 pour envoi email
   
   // Sécurité
   hash        String
   
-  // RGPD - Purge automatique J+30
-  deleteAt    DateTime
+  // Purge
+  isPurged    Boolean   @default(false)
+  purgedAt    DateTime?
   
   createdAt   DateTime  @default(now())
   
   @@index([caseId])
-  @@index([deleteAt])
-}
-
-// ============================================
-// ANALYSE IA
-// ============================================
-model Analysis {
-  id          String    @id @default(cuid())
-  caseId      String    @unique
-  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  
-  // Résultats
-  summary     String?
-  keyPoints   String?
-  risks       String?
-  recommendations String?
-  nextSteps   String?
-  
-  // Métadonnées
-  aiModel     String    @default("glm-5")
-  tokensUsed  Int?
-  
-  // Statut
-  status      String    @default("processing")
-  error       String?
-  
-  createdAt   DateTime  @default(now())
-  completedAt DateTime?
-  
-  @@index([caseId])
-}
-
-// ============================================
-// PAIEMENT
-// ============================================
-model Payment {
-  id          String    @id @default(cuid())
-  caseId      String    @unique
-  case        Case      @relation(fields: [caseId], references: [id])
-  lawyerId    String
-  lawyer      Lawyer    @relation(fields: [lawyerId], references: [id])
-  
-  // Montant
-  amount      Int
-  currency    String    @default("EUR")
-  
-  // Stripe
-  stripePaymentIntent String?
-  stripeSessionId     String?
-  
-  // Statut
-  status      String    @default("pending")
-  
-  // Dates
-  createdAt   DateTime  @default(now())
-  paidAt      DateTime?
-  
-  @@index([lawyerId])
-  @@index([status])
+  @@index([isPurged])
 }
 
 // ============================================
@@ -191,7 +145,7 @@ model Payment {
 // ============================================
 model Event {
   id          String    @id @default(cuid())
-  type        String
+  type        String    // case_created, payment_success, email_sent, email_opened, data_purged
   
   lawyerId    String?
   caseId      String?

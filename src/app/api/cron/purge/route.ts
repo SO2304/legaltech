@@ -1,97 +1,146 @@
 // ============================================
-// API: CRON - PURGE AUTOMATIQUE J+7
-// À appeler par un cron job (Vercel Cron, n8n, etc.)
+// API - PURGE AUTOMATIQUE DES DONNÉES
+// CRON job à exécuter toutes les heures
+// Supprime les données après 7 jours
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// Cette route doit être protégée par un header Authorization ou un secret
-const CRON_SECRET = process.env.CRON_SECRET || 'dev-cron-secret'
+// Durée de conservation en jours
+const RETENTION_DAYS = 7
 
 export async function GET(request: NextRequest) {
   try {
-    // Vérifier l'autorisation
+    // Vérifier le secret CRON (sécurité)
     const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json(
-        { success: false, error: 'Non autorisé' },
-        { status: 401 }
-      )
+    const cronSecret = process.env.CRON_SECRET
+    
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    // Trouver les documents à purger (datePurge < maintenant et non encore purgés)
-    const documentsToPurge = await prisma.document.findMany({
+    const now = new Date()
+    let purgedCases = 0
+    let purgedDocuments = 0
+    
+    // 1. Purger les dossiers dont la date de purge est dépassée
+    const casesToPurge = await prisma.case.findMany({
       where: {
-        estPurge: false,
-        datePurge: {
-          lt: new Date(),
-        },
+        purgeAt: { lte: now },
+        isPurged: false,
       },
       include: {
-        dossier: true,
+        documents: true,
       },
     })
     
-    const results = {
-      documentsProcessed: 0,
-      dossiersUpdated: 0,
-      errors: [] as string[],
-    }
-    
-    for (const doc of documentsToPurge) {
-      try {
-        // TODO: En production, supprimer le fichier de Supabase Storage
-        // await supabase.storage.from('documents').remove([doc.cheminStockage])
-        
-        // Marquer comme purgé
+    for (const caseData of casesToPurge) {
+      console.log(`Purging case ${caseData.reference}`)
+      
+      // Supprimer les fichiers physiques (en production, supprimer de S3/Supabase Storage)
+      for (const doc of caseData.documents) {
         await prisma.document.update({
           where: { id: doc.id },
           data: {
-            estPurge: true,
-            datePurgeEffective: new Date(),
+            isPurged: true,
+            purgedAt: now,
+            fileData: null, // Supprimer les données base64
+            storagePath: '', // Vider le chemin
           },
         })
-        
-        results.documentsProcessed++
-        
-      } catch (error) {
-        results.errors.push(`Document ${doc.id}: ${error}`)
+        purgedDocuments++
       }
+      
+      // Anonymiser les données client
+      await prisma.case.update({
+        where: { id: caseData.id },
+        data: {
+          isPurged: true,
+          purgedAt: now,
+          status: 'purged',
+          // Anonymiser les données client
+          clientName: '[DONNÉES SUPPRIMÉES]',
+          clientEmail: null,
+          clientPhone: null,
+          clientAddress: null,
+          clientCity: null,
+          caseDescription: null,
+          clientAnalysis: null,
+        },
+      })
+      
+      // Logger l'événement
+      await prisma.event.create({
+        data: {
+          type: 'data_purged',
+          lawyerId: caseData.lawyerId,
+          caseId: caseData.id,
+          metadata: JSON.stringify({ reason: 'retention_expired' }),
+        },
+      })
+      
+      purgedCases++
     }
     
-    // Mettre à jour les dossiers dont tous les documents sont purgés
-    const dossiersToUpdate = await prisma.dossier.findMany({
+    // 2. Purger les dossiers non ouverts après 7 jours (sécurité supplémentaire)
+    const unopenedCases = await prisma.case.findMany({
       where: {
-        statut: { in: ['NOTIFIE', 'ARCHIVE'] },
-        documents: {
-          every: { estPurge: true },
+        emailSentAt: { not: null },
+        emailOpened: false,
+        isPurged: false,
+        createdAt: {
+          lte: new Date(now.getTime() - RETENTION_DAYS * 24 * 60 * 60 * 1000),
         },
       },
     })
     
-    for (const dossier of dossiersToUpdate) {
-      await prisma.dossier.update({
-        where: { id: dossier.id },
-        data: { statut: 'PURGE' },
+    for (const caseData of unopenedCases) {
+      console.log(`Purging unopened case ${caseData.reference}`)
+      
+      await prisma.case.update({
+        where: { id: caseData.id },
+        data: {
+          isPurged: true,
+          purgedAt: now,
+          status: 'purged',
+          clientName: '[DONNÉES SUPPRIMÉES - MAIL NON OUVERT]',
+          clientEmail: null,
+          clientPhone: null,
+          clientAddress: null,
+          clientCity: null,
+          caseDescription: null,
+        },
       })
-      results.dossiersUpdated++
+      
+      await prisma.event.create({
+        data: {
+          type: 'data_purged',
+          lawyerId: caseData.lawyerId,
+          caseId: caseData.id,
+          metadata: JSON.stringify({ reason: 'email_not_opened' }),
+        },
+      })
+      
+      purgedCases++
     }
+    
+    console.log(`Purge complete: ${purgedCases} cases, ${purgedDocuments} documents`)
     
     return NextResponse.json({
       success: true,
-      timestamp: new Date().toISOString(),
-      results,
+      purgedAt: now.toISOString(),
+      stats: {
+        cases: purgedCases,
+        documents: purgedDocuments,
+      },
     })
     
   } catch (error) {
     console.error('Purge error:', error)
     return NextResponse.json(
-      { success: false, error: 'Erreur lors de la purge' },
+      { success: false, error: 'Purge failed' },
       { status: 500 }
     )
   }
 }
-
-// Permettre aussi POST pour les webhooks n8n
-export const POST = GET

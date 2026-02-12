@@ -3,7 +3,7 @@
 // ============================================
 // FLASHJURIS - PAGE DE CAPTURE MOBILE-FIRST
 // Route: /scan/[id]
-// Interface ultra-simple pour le client
+// Prix: 149€ unique pour le client
 // ============================================
 
 import { useState, useEffect, useCallback } from 'react'
@@ -24,8 +24,9 @@ import {
   Mail,
   User,
   ArrowRight,
-  Sparkles,
-  Trash2
+  Trash2,
+  CreditCard,
+  Lock
 } from 'lucide-react'
 
 interface LawyerInfo {
@@ -40,10 +41,8 @@ interface UploadedFile {
   name: string
   size: number
   type: string
+  file: File
   preview?: string
-  uploading: boolean
-  uploaded: boolean
-  error?: string
 }
 
 export default function ScanCapturePage() {
@@ -71,6 +70,9 @@ export default function ScanCapturePage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [caseReference, setCaseReference] = useState('')
+  
+  // Prix
+  const PRICE_EUROS = 149
   
   // Charger les infos de l'avocat
   useEffect(() => {
@@ -105,9 +107,8 @@ export default function ScanCapturePage() {
       name: file.name,
       size: file.size,
       type: file.type,
+      file,
       preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
-      uploading: false,
-      uploaded: false,
     }))
     
     setFiles(prev => [...prev, ...fileArray])
@@ -177,18 +178,15 @@ export default function ScanCapturePage() {
       const caseId = caseData.case.id
       setCaseReference(caseData.case.reference)
       
-      // 2. Uploader les fichiers
+      // 2. Préparer le FormData avec les fichiers
       const formData = new FormData()
       formData.append('caseId', caseId)
       
-      // Pour les fichiers, on doit les récupérer depuis l'input original
-      const fileInput = document.getElementById('file-input') as HTMLInputElement
-      if (fileInput.files) {
-        Array.from(fileInput.files).forEach(file => {
-          formData.append('files', file)
-        })
-      }
+      files.forEach(f => {
+        formData.append('files', f.file)
+      })
       
+      // 3. Uploader les fichiers (déclenche l'envoi email)
       const uploadRes = await fetch('/api/scan/upload', {
         method: 'POST',
         body: formData,
@@ -199,13 +197,6 @@ export default function ScanCapturePage() {
       if (!uploadData.success) {
         throw new Error(uploadData.error || 'Erreur lors de l\'upload')
       }
-      
-      // 3. Déclencher l'analyse
-      await fetch('/api/analysis/trigger', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caseId }),
-      })
       
       setSubmitted(true)
       
@@ -258,16 +249,17 @@ export default function ScanCapturePage() {
           <p className="text-gray-600 mb-4">
             Votre dossier a été transmis à <strong>{lawyer?.name}</strong>
           </p>
-          <div className="bg-gray-50 rounded-xl p-4 mb-6">
+          <div className="bg-gray-50 rounded-xl p-4 mb-4">
             <p className="text-sm text-gray-500 mb-1">Référence du dossier</p>
             <p className="font-mono font-bold text-lg text-gray-900">{caseReference}</p>
           </div>
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mb-6">
-            <Sparkles className="w-4 h-4 text-purple-500" />
-            <span>L'analyse IA est en cours...</span>
+          <div className="bg-blue-50 rounded-xl p-4 mb-4">
+            <p className="text-blue-800 text-sm">
+              <strong>Paiement de {PRICE_EUROS}€ confirmé</strong>
+            </p>
           </div>
           <p className="text-sm text-gray-500">
-            Vous recevrez un email de confirmation à <strong>{clientEmail}</strong>
+            Les documents seront supprimés automatiquement dans 7 jours.
           </p>
         </div>
       </div>
@@ -292,16 +284,23 @@ export default function ScanCapturePage() {
       
       <main className="max-w-lg mx-auto px-4 py-6 pb-24">
         {/* Titre */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Déposez vos documents
+            Envoyez vos documents
           </h1>
-          <p className="text-gray-600">
-            Transmettez vos pièces à {lawyer?.name} en quelques clics
+          <p className="text-gray-600 text-sm">
+            à {lawyer?.name}
           </p>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Prix */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 mb-6 text-center text-white">
+          <p className="text-sm opacity-90">Service unique</p>
+          <p className="text-3xl font-bold">{PRICE_EUROS}€</p>
+          <p className="text-xs opacity-75 mt-1">Documents supprimés après 7 jours</p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Section: Identité */}
           <div className="bg-white rounded-2xl shadow-sm border p-5">
             <div className="flex items-center gap-3 mb-4">
@@ -313,9 +312,7 @@ export default function ScanCapturePage() {
             
             <div className="space-y-4">
               <div>
-                <Label htmlFor="name" className="text-sm text-gray-600">
-                  Nom complet *
-                </Label>
+                <Label htmlFor="name" className="text-sm text-gray-600">Nom complet *</Label>
                 <Input
                   id="name"
                   value={clientName}
@@ -327,9 +324,7 @@ export default function ScanCapturePage() {
               </div>
               
               <div>
-                <Label htmlFor="email" className="text-sm text-gray-600">
-                  Email *
-                </Label>
+                <Label htmlFor="email" className="text-sm text-gray-600">Email *</Label>
                 <div className="relative mt-1.5">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
@@ -345,9 +340,7 @@ export default function ScanCapturePage() {
               </div>
               
               <div>
-                <Label htmlFor="phone" className="text-sm text-gray-600">
-                  Téléphone
-                </Label>
+                <Label htmlFor="phone" className="text-sm text-gray-600">Téléphone</Label>
                 <div className="relative mt-1.5">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
@@ -373,14 +366,7 @@ export default function ScanCapturePage() {
             </div>
             
             <div className="grid grid-cols-2 gap-2 mb-4">
-              {[
-                'Divorce',
-                'Succession',
-                'Litige',
-                'Immobilier',
-                'Travail',
-                'Autre'
-              ].map((type) => (
+              {['Divorce', 'Succession', 'Litige', 'Immobilier', 'Travail', 'Autre'].map((type) => (
                 <button
                   key={type}
                   type="button"
@@ -400,7 +386,7 @@ export default function ScanCapturePage() {
               value={caseDescription}
               onChange={(e) => setCaseDescription(e.target.value)}
               placeholder="Décrivez brièvement votre situation..."
-              className="min-h-[100px] rounded-xl resize-none"
+              className="min-h-[80px] rounded-xl resize-none"
             />
           </div>
           
@@ -410,7 +396,7 @@ export default function ScanCapturePage() {
               <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                 <Upload className="w-4 h-4 text-green-600" />
               </div>
-              <h2 className="font-semibold text-gray-900">Vos documents</h2>
+              <h2 className="font-semibold text-gray-900">Vos documents *</h2>
             </div>
             
             {/* Zone d'upload */}
@@ -419,9 +405,7 @@ export default function ScanCapturePage() {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
-                dragActive
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <input
@@ -437,46 +421,26 @@ export default function ScanCapturePage() {
                 <Camera className="w-8 h-8 text-gray-400" />
               </div>
               
-              <p className="font-medium text-gray-700 mb-1">
-                Appuyez pour ajouter des photos
-              </p>
-              <p className="text-sm text-gray-500">
-                ou glissez vos fichiers ici
-              </p>
-              <p className="text-xs text-gray-400 mt-2">
-                PDF, images • Max 50 Mo par fichier
-              </p>
+              <p className="font-medium text-gray-700 mb-1">Appuyez pour ajouter des photos</p>
+              <p className="text-sm text-gray-500">ou glissez vos fichiers ici</p>
             </div>
             
             {/* Liste des fichiers */}
             {files.length > 0 && (
               <div className="mt-4 space-y-2">
                 {files.map((file) => (
-                  <div
-                    key={file.id}
-                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"
-                  >
+                  <div key={file.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                     {file.preview ? (
-                      <img
-                        src={file.preview}
-                        alt=""
-                        className="w-12 h-12 rounded-lg object-cover"
-                      />
+                      <img src={file.preview} alt="" className="w-12 h-12 rounded-lg object-cover" />
                     ) : (
                       <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
                         <FileText className="w-5 h-5 text-gray-500" />
                       </div>
                     )}
-                    
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {file.name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {formatSize(file.size)}
-                      </p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                      <p className="text-xs text-gray-500">{formatSize(file.size)}</p>
                     </div>
-                    
                     <button
                       type="button"
                       onClick={() => removeFile(file.id)}
@@ -493,11 +457,25 @@ export default function ScanCapturePage() {
           {/* RGPD */}
           <div className="bg-blue-50 rounded-2xl p-4 flex items-start gap-3">
             <Shield className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-gray-600">
-              Vos documents sont chiffrés et supprimés automatiquement après 30 jours.
-              En continuant, vous acceptez notre{' '}
-              <span className="text-blue-600">politique de confidentialité</span>.
-            </p>
+            <div className="text-sm text-gray-600">
+              <p className="font-medium text-gray-900 mb-1">Protection de vos données</p>
+              <p>Vos documents sont chiffrés et supprimés automatiquement après 7 jours.</p>
+            </div>
+          </div>
+          
+          {/* Paiement */}
+          <div className="bg-gray-900 rounded-2xl p-5 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                <span className="font-medium">Total à payer</span>
+              </div>
+              <span className="text-2xl font-bold">{PRICE_EUROS}€</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <Lock className="w-4 h-4" />
+              Paiement sécurisé
+            </div>
           </div>
           
           {/* Bouton de soumission */}
@@ -513,7 +491,7 @@ export default function ScanCapturePage() {
               </>
             ) : (
               <>
-                Envoyer mes documents
+                Envoyer mes documents ({PRICE_EUROS}€)
                 <ArrowRight className="w-5 h-5 ml-2" />
               </>
             )}
