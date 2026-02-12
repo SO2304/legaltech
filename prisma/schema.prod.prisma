@@ -1,7 +1,7 @@
 // ============================================
-// FLASHJURIS - SCHEMA PRISMA
+// FLASHJURIS - SCHEMA PRISMA (PRODUCTION)
+// PostgreSQL - Vercel/Supabase
 // Multi-juridiction: FR, BE, CH, LU
-// Works with SQLite (dev) and PostgreSQL (prod)
 // ============================================
 
 generator client {
@@ -9,8 +9,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 // ============================================
@@ -139,7 +140,7 @@ model Document {
   
   // Stockage temporaire
   storagePath String
-  fileData    String?   // Base64 pour envoi email
+  fileData    String?   @db.Text  // Base64 pour envoi email
   
   // Sécurité
   hash        String
@@ -165,7 +166,7 @@ model Event {
   caseId      String?
   country     String?   // Pays concerné
   
-  metadata    String?   // JSON (SQLite doesn't support Json type)
+  metadata    Json?     // JSON
   
   createdAt   DateTime  @default(now())
   
