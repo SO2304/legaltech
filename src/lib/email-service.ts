@@ -462,6 +462,92 @@ export async function sendWelcomeEmail(lawyer: {
 }
 
 /**
+ * Envoie le rapport d'analyse à l'avocat
+ */
+export async function sendAnalysisReport(
+  caseId: string,
+  data: {
+    lawyer: { name: string; email: string; firm: string | null }
+    caseReference: string
+    clientName: string | null
+    caseType: string | null
+    analysis: {
+      summary: string
+      keyPoints: string[]
+      risks: string[]
+      recommendations: string[]
+      nextSteps: string[]
+    }
+  }
+): Promise<boolean> {
+  console.log(`Sending analysis report to ${data.lawyer.email}`)
+  
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Analyse du dossier ${data.caseReference}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden;">
+          <tr>
+            <td style="background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%); padding: 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px;">📊 Analyse IA terminée</h1>
+              <p style="margin: 15px 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">Dossier ${data.caseReference}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 30px 40px;">
+              <h2 style="margin: 0 0 15px; color: #1e293b; font-size: 18px;">Résumé</h2>
+              <p style="margin: 0; color: #475569; font-size: 14px; line-height: 1.6;">${data.analysis.summary || 'Aucun résumé disponible'}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f8fafc; padding: 25px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0; color: #94a3b8; font-size: 12px;">FlashJuris - Analyse IA</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim()
+  
+  if (process.env.RESEND_API_KEY) {
+    try {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'FlashJuris <analyse@flashjuris.com>',
+          to: data.lawyer.email,
+          subject: `📊 Analyse IA - Dossier ${data.caseReference}`,
+          html: htmlContent,
+        }),
+      })
+      return true
+    } catch (error) {
+      console.error('Failed to send analysis report:', error)
+      return false
+    }
+  }
+  
+  console.log('=== ANALYSIS REPORT (DEV MODE) ===')
+  console.log(`To: ${data.lawyer.email}`)
+  console.log('==================================')
+  return true
+}
+
+/**
  * Marque l'email comme ouvert (tracking pixel)
  */
 export async function trackEmailOpened(caseId: string): Promise<void> {
