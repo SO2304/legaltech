@@ -1,6 +1,7 @@
 // ============================================
 // FLASHJURIS - SCHEMA PRISMA
 // Architecture "Scan-to-Report"
+// Multi-juridiction: FR, BE, CH, LU
 // Compatible SQLite (dev) / PostgreSQL (prod)
 // ============================================
 
@@ -15,7 +16,7 @@ datasource db {
 
 // ============================================
 // AVOCAT / LAWYER
-// Pas de compte - juste email et QR code
+// Multi-juridiction: FR, BE, CH, LU
 // ============================================
 model Lawyer {
   id            String   @id @default(cuid())
@@ -23,6 +24,11 @@ model Lawyer {
   name          String
   firm          String?
   phone         String?
+  
+  // Localisation
+  country       String   @default("FR")  // FR, BE, CH, LU
+  barreau       String?  // Barreau d'appartenance
+  barNumber     String?  // Numéro d'inscription au barreau
   
   // QR Code
   qrCodeUrl     String   @unique
@@ -45,6 +51,7 @@ model Lawyer {
   
   @@index([email])
   @@index([qrCodeUrl])
+  @@index([country])
 }
 
 // ============================================
@@ -59,13 +66,18 @@ model Case {
   lawyerId    String
   lawyer      Lawyer      @relation(fields: [lawyerId], references: [id])
   
-  // Données client (purgeables)
+  // Localisation client
+  country     String      @default("FR")  // FR, BE, CH, LU
   clientName      String?
   clientEmail     String?
   clientPhone     String?
   clientAddress   String?
   clientCity      String?
+  clientPostalCode String?
+  
+  // Type d'affaire (adapté selon juridiction)
   caseType        String?
+  caseSubType     String?   // Sous-type si applicable
   caseDescription String?
   
   // Documents
@@ -74,13 +86,18 @@ model Case {
   // Statut
   status      String      @default("pending")  // pending, paid, sent, purged
   
-  // Paiement client (149€)
+  // Prix selon le pays
+  priceCents       Int      @default(14900)  // En centimes
+  priceCurrency    String   @default("EUR")   // EUR ou CHF
+  
+  // Paiement client
   stripePaymentIntent String?
   paymentStatus       String    @default("pending")  // pending, succeeded, failed
   paidAt              DateTime?
   
   // Commission avocat (20%)
-  commissionAmount    Int       @default(0)  // En centimes (20% de 149€ = 29.80€ = 2980 centimes)
+  commissionAmount    Int       @default(0)  // En centimes
+  commissionCurrency  String    @default("EUR")
   commissionPaid      Boolean   @default(false)
   commissionPaidAt    DateTime?
   
@@ -94,9 +111,6 @@ model Case {
   purgedAt            DateTime? // Date de purge effective
   isPurged            Boolean   @default(false)
   
-  // Analyse IA pour le CLIENT uniquement (optionnel)
-  clientAnalysis      String?
-  
   // Dates
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -106,6 +120,7 @@ model Case {
   @@index([reference])
   @@index([purgeAt])
   @@index([isPurged])
+  @@index([country])
 }
 
 // ============================================
@@ -149,14 +164,13 @@ model Event {
   
   lawyerId    String?
   caseId      String?
-  metadata    String?
+  country     String?   // Pays concerné
   
-  ipAddress   String?
-  userAgent   String?
+  metadata    String?   // JSON
   
   createdAt   DateTime  @default(now())
   
   @@index([type])
-  @@index([lawyerId])
+  @@index([country])
   @@index([createdAt])
 }

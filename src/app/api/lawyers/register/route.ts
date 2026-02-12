@@ -1,5 +1,5 @@
 // ============================================
-// API - INSCRIPTION AVOCAT
+// API - INSCRIPTION AVOCAT (MULTI-JURIDICTION)
 // POST /api/lawyers/register
 // Crée un avocat et génère son QR code
 // ============================================
@@ -9,16 +9,26 @@ import { prisma } from '@/lib/prisma'
 import { generateLawyerQRCode } from '@/lib/qrcode/generator'
 import { sendWelcomeEmail } from '@/lib/email-service'
 import { nanoid } from 'nanoid'
+import type { CountryCode } from '@/lib/countries'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, name, firm, phone } = body
+    const { email, name, firm, phone, country = 'FR' } = body
     
     // Validation
     if (!email || !name) {
       return NextResponse.json(
         { success: false, error: 'Email et nom obligatoires' },
+        { status: 400 }
+      )
+    }
+    
+    // Valider le pays
+    const validCountries = ['FR', 'BE', 'CH', 'LU']
+    if (!validCountries.includes(country)) {
+      return NextResponse.json(
+        { success: false, error: 'Pays non supporté' },
         { status: 400 }
       )
     }
@@ -49,9 +59,10 @@ export async function POST(request: NextRequest) {
         name,
         firm: firm || null,
         phone: phone || null,
+        country: country as CountryCode,
         qrCodeUrl: qrCode.url,
         qrCodeImage: qrCode.imageBase64,
-        plan: 'free',
+        commissionRate: 20.0,
       },
     })
     
@@ -68,7 +79,8 @@ export async function POST(request: NextRequest) {
       data: {
         type: 'lawyer_registered',
         lawyerId: lawyer.id,
-        metadata: JSON.stringify({ email, name }),
+        country: country,
+        metadata: JSON.stringify({ email, name, country }),
       },
     })
     
@@ -78,6 +90,7 @@ export async function POST(request: NextRequest) {
         id: lawyer.id,
         name: lawyer.name,
         email: lawyer.email,
+        country: lawyer.country,
       },
     })
     

@@ -1,122 +1,103 @@
-# ⚡ FlashJuris - Scan-to-Report pour Avocats
+# ⚡ FlashJuris - Scan-to-Report Multi-Juridiction
 
 **Recevez les documents de vos clients en un scan.** 
 
-FlashJuris est un SaaS révolutionnaire qui permet aux avocats de recevoir des documents de leurs clients sans dashboard, sans application - juste un QR Code et l'email.
+Disponible en **France, Belgique, Suisse et Luxembourg** avec adaptation automatique selon la juridiction.
+
+## 🌍 Juridictions Supportées
+
+| Pays | Prix Client | Commission Avocat | Devise |
+|------|-------------|-------------------|--------|
+| 🇫🇷 France | 149 € | 29,80 € | EUR |
+| 🇧🇪 Belgique | 159 € | 31,80 € | EUR |
+| 🇨🇭 Suisse | 149 CHF | 29,80 CHF | CHF |
+| 🇱🇺 Luxembourg | 169 € | 33,80 € | EUR |
 
 ## 🎯 Le Concept
 
 ```
-1. L'avocat reçoit son QR Code par email
+1. L'avocat reçoit son QR Code par email (GRATUIT)
 2. Il le pose sur son bureau
-3. Le client scanne → Remplit le formulaire → Upload ses documents
-4. L'avocat reçoit le rapport d'analyse IA directement par email
+3. Le client scanne → Sélectionne son pays → Upload ses documents
+4. L'avocat reçoit le ZIP par email + lien Stripe pour sa commission (20%)
 ```
 
-**Zéro friction. Zéro dashboard. Zéro support.**
+## 🏛️ Adaptation par Juridiction
 
-## 🚀 Fonctionnalités
+### Types d'affaires par pays
 
-- **QR Code unique** : Chaque avocat a son QR Code personnalisé
-- **Interface mobile-first** : Optimisée pour smartphone (90% des scans)
-- **Analyse IA** : GLM-5 analyse les documents et génère une synthèse
-- **Email automatique** : Rapport envoyé directement à l'avocat
-- **RGPD compliant** : Documents supprimés après 30 jours
+**France** : Divorce, Succession, Immobilier, Travail, Famille, Pénal, Commercial, Autre
+
+**Belgique** : Divorce, Succession, Immobilier, Travail, Famille, Pénal, Droit des affaires
+
+**Suisse** : Divorce, Succession, Immobilier, Travail, Famille, Pénal, Poursuites et faillites
+
+**Luxembourg** : Divorce, Succession, Immobilier, Travail, Famille, Droit des sociétés, Fiscal
+
+### Documents suggérés par pays
+
+Chaque pays a ses documents types (CNI, actes, bulletins de salaire, etc.) adaptés à la législation locale.
+
+## 📋 Fonctionnalités
+
+- **Détection automatique du pays** via email/téléphone
+- **Prix adapté** selon la devise locale (EUR/CHF)
+- **Types d'affaires** spécifiques à chaque juridiction
+- **Documents ZIP** envoyés à l'avocat
+- **Commission 20%** via Stripe
+- **Purge J+7** automatique (RGPD/LPD)
+- **Mentions légales** adaptées par pays
 
 ## 🛠️ Stack Technique
 
-- **Frontend**: Next.js 16, TypeScript, Tailwind CSS, shadcn/ui
-- **Backend**: Prisma ORM, API Routes Next.js
-- **Database**: SQLite (dev) / PostgreSQL Supabase (prod)
-- **IA**: GLM-5 via z-ai-web-dev-sdk
+- **Frontend**: Next.js 16, TypeScript, Tailwind CSS
+- **Database**: Prisma + SQLite/PostgreSQL
+- **Paiement**: Stripe
+- **Email**: Resend
 - **QR Code**: qrcode (npm)
-- **Email**: Resend / SendGrid
 
 ## 📁 Structure
 
 ```
 src/
-├── app/
-│   ├── api/
-│   │   ├── lawyers/           # Inscription avocats
-│   │   ├── scan/              # Création dossiers & upload
-│   │   └── analysis/          # Déclenchement analyse IA
-│   ├── scan/[id]/             # Page de capture mobile
-│   └── page.tsx               # Landing page
 ├── lib/
-│   ├── qrcode/                # Génération QR codes
-│   ├── analysis-service.ts    # Analyse IA GLM-5
-│   └── email-service.ts       # Envoi rapports email
+│   ├── countries.ts      # Config FR, BE, CH, LU
+│   ├── location.ts       # Détection pays
+│   └── email-service.ts  # Envoi ZIP + Stripe
+├── app/
+│   ├── scan/[id]/        # Formulaire multi-pays
+│   └── api/scan/         # APIs localisées
 └── prisma/
-    └── schema.prisma          # Modèles: Lawyer, Case, Document, Analysis
+    └── schema.prisma     # country, priceCurrency
 ```
 
-## 🗄️ Modèles de Données
+## 🧪 Démo par Pays
 
-| Table | Description |
-|-------|-------------|
-| `Lawyer` | Avocat avec QR code unique |
-| `Case` | Dossier client |
-| `Document` | Documents uploadés avec purge auto |
-| `Analysis` | Résultats de l'analyse IA |
-| `Payment` | Paiements Stripe |
-| `Event` | Audit trail |
+| Pays | URL |
+|------|-----|
+| France | http://localhost:3000/scan/demo-fr |
+| Belgique | http://localhost:3000/scan/demo-be |
+| Suisse | http://localhost:3000/scan/demo-ch |
+| Luxembourg | http://localhost:3000/scan/demo-lu |
 
 ## 🔧 Installation
 
 ```bash
-# Installer les dépendances
 bun install
-
-# Configurer l'environnement
-cp .env.example .env
-
-# Initialiser la base de données
-bunx prisma db push
-bunx prisma db seed
-
-# Lancer en développement
+npx prisma db push
+npx tsx prisma/seed-flashjuris.ts
 bun run dev
 ```
-
-## 🌐 URLs
-
-| Route | Description |
-|-------|-------------|
-| `/` | Landing page |
-| `/scan/[lawyerId]` | Page de capture pour clients |
 
 ## 📝 Variables d'Environnement
 
 ```env
-# Database
 DATABASE_URL="file:./db/custom.db"
-
-# App URL (pour les QR codes)
 NEXT_PUBLIC_APP_URL="https://flashjuris.com"
-
-# Email (Resend)
 RESEND_API_KEY="re_xxx"
-
-# Encryption
-ENCRYPTION_KEY="your-32-char-encryption-key"
+STRIPE_SECRET_KEY="sk_xxx"
+CRON_SECRET="xxx"
 ```
-
-## 🧪 Démo
-
-- **Avocat ID** : `demo-lawyer`
-- **Scan URL** : `http://localhost:3000/scan/demo-lawyer`
-
-## 💡 Pitch Commercial
-
-> "Donnez-moi votre email, je vous envoie votre QR code. Posez-le sur votre bureau, vous recevrez les rapports d'analyse de vos clients directement dans votre boîte mail."
-
-## 📈 Avantages Business
-
-1. **Vente instantanée** : Pitch en 10 secondes
-2. **Zéro support** : Pas de dashboard à expliquer
-3. **Friction zéro** : Pas d'app à télécharger pour le client
-4. **Valeur immédiate** : L'avocat reçoit son QR code en 30 secondes
 
 ## 📄 License
 

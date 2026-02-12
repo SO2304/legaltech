@@ -1,18 +1,14 @@
 // ============================================
-// API - CRÉATION DOSSIER CLIENT
+// API - CRÉATION DOSSIER CLIENT (MULTI-JURIDICTION)
 // POST /api/scan/create
-// Prix: 149€ unique
-// Purge: J+7 automatique
+// Prix adapté selon le pays: FR(149€), BE(159€), CH(149CHF), LU(169€)
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { nanoid } from 'nanoid'
+import { PRICES, COMMISSION_RATE, type CountryCode } from '@/lib/countries'
 
-// Prix fixe en centimes (149€)
-const PRICE_CENTS = 14900
-// Commission avocat en centimes (20% de 149€ = 29.80€)
-const COMMISSION_CENTS = 2980
 // Durée de rétention en jours
 const RETENTION_DAYS = 7
 
@@ -22,10 +18,14 @@ export async function POST(request: NextRequest) {
     
     const {
       lawyerId,
+      country = 'FR',
       clientName,
       clientEmail,
       clientPhone,
+      clientPostalCode,
+      clientCity,
       caseType,
+      caseSubType,
       caseDescription,
     } = body
     
@@ -36,6 +36,17 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    
+    // Valider le pays
+    const validCountries = ['FR', 'BE', 'CH', 'LU']
+    if (!validCountries.includes(country)) {
+      return NextResponse.json(
+        { success: false, error: 'Pays non supporté' },
+        { status: 400 }
+      )
+    }
+    
+    const countryCode = country as CountryCode
     
     // Vérifier que l'avocat existe
     const lawyer = await prisma.lawyer.findUnique({
@@ -49,27 +60,39 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // Récupérer le prix selon le pays
+    const priceConfig = PRICES[countryCode]
+    const commissionAmount = Math.round(priceConfig.amount * COMMISSION_RATE)
+    
     // Générer une référence unique
-    const reference = `FJ-${nanoid(8).toUpperCase()}`
+    const reference = `FJ-${country}-${nanoid(6).toUpperCase()}`
     
     // Calculer la date de purge (J+7)
     const purgeAt = new Date()
     purgeAt.setDate(purgeAt.getDate() + RETENTION_DAYS)
     
-    // Créer le dossier avec les infos de paiement
+    // Créer le dossier
     const newCase = await prisma.case.create({
       data: {
         reference,
         lawyerId,
+        country: countryCode,
         clientName,
         clientEmail,
         clientPhone,
+        clientPostalCode,
+        clientCity,
         caseType,
+        caseSubType,
         caseDescription,
         status: 'pending',
         paymentStatus: 'pending',
-        // Prix et commission
-        commissionAmount: COMMISSION_CENTS,
+        // Prix selon le pays
+        priceCents: priceConfig.amount,
+        priceCurrency: priceConfig.currency,
+        // Commission
+        commissionAmount,
+        commissionCurrency: priceConfig.currency,
         // Date de purge
         purgeAt,
       },
@@ -81,10 +104,12 @@ export async function POST(request: NextRequest) {
         type: 'case_created',
         lawyerId,
         caseId: newCase.id,
+        country: countryCode,
         metadata: JSON.stringify({ 
           reference, 
           clientEmail,
-          priceCents: PRICE_CENTS,
+          country: countryCode,
+          price: priceConfig.display,
           purgeAt: purgeAt.toISOString(),
         }),
       },
@@ -95,10 +120,12 @@ export async function POST(request: NextRequest) {
       case: {
         id: newCase.id,
         reference: newCase.reference,
-        priceCents: PRICE_CENTS,
-        priceEuros: PRICE_CENTS / 100,
-        commissionCents: COMMISSION_CENTS,
-        commissionEuros: COMMISSION_CENTS / 100,
+        country: countryCode,
+        priceCents: priceConfig.amount,
+        priceDisplay: priceConfig.display,
+        currency: priceConfig.currency,
+        commissionCents: commissionAmount,
+        commissionDisplay: `${(commissionAmount / 100).toFixed(2)} ${priceConfig.currency}`,
         purgeAt: purgeAt.toISOString(),
       },
     })
