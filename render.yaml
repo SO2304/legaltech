@@ -1,9 +1,16 @@
+# ============================================
+# FLASHJURIS - RENDER.COM CONFIGURATION
+# Déploiement gratuit avec PostgreSQL
+# ============================================
+
 services:
   - type: web
     name: flashjuris
     env: node
-    buildCommand: bun install && bun run build
-    startCommand: bun run start
+    region: frankfurt  # Europe pour RGPD
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
@@ -18,3 +25,4 @@ databases:
   - name: flashjuris-db
     databaseName: flashjuris
     user: flashjuris
+    region: frankfurt

@@ -1,104 +1,100 @@
-# ⚡ FlashJuris - Scan-to-Report Multi-Juridiction
+# FlashJuris
 
-**Recevez les documents de vos clients en un scan.** 
+**Service de transfert sécurisé de documents juridiques**
 
-Disponible en **France, Belgique, Suisse et Luxembourg** avec adaptation automatique selon la juridiction.
+Multi-juridiction : 🇫🇷 France | 🇧🇪 Belgique | 🇨🇭 Suisse | 🇱🇺 Luxembourg
 
-## 🌍 Juridictions Supportées
+## 🚀 Fonctionnalités
 
-| Pays | Prix Client | Commission Avocat | Devise |
-|------|-------------|-------------------|--------|
-| 🇫🇷 France | 149 € | 29,80 € | EUR |
-| 🇧🇪 Belgique | 159 € | 31,80 € | EUR |
-| 🇨🇭 Suisse | 149 CHF | 29,80 CHF | CHF |
-| 🇱🇺 Luxembourg | 169 € | 33,80 € | EUR |
+- **QR Code unique** par avocat (service gratuit)
+- **Paiement en ligne** selon le pays (149€ FR, 159€ BE, 149CHF CH, 169€ LU)
+- **Envoi automatique** des documents en ZIP à l'avocat
+- **Commission 20%** pour l'avocat via Stripe
+- **Purge automatique J+7** (conformité RGPD/LPD)
+- **Audit trail complet** pour la traçabilité juridique
 
-## 🎯 Le Concept
-
-```
-1. L'avocat reçoit son QR Code par email (GRATUIT)
-2. Il le pose sur son bureau
-3. Le client scanne → Sélectionne son pays → Upload ses documents
-4. L'avocat reçoit le ZIP par email + lien Stripe pour sa commission (20%)
-```
-
-## 🏛️ Adaptation par Juridiction
-
-### Types d'affaires par pays
-
-**France** : Divorce, Succession, Immobilier, Travail, Famille, Pénal, Commercial, Autre
-
-**Belgique** : Divorce, Succession, Immobilier, Travail, Famille, Pénal, Droit des affaires
-
-**Suisse** : Divorce, Succession, Immobilier, Travail, Famille, Pénal, Poursuites et faillites
-
-**Luxembourg** : Divorce, Succession, Immobilier, Travail, Famille, Droit des sociétés, Fiscal
-
-### Documents suggérés par pays
-
-Chaque pays a ses documents types (CNI, actes, bulletins de salaire, etc.) adaptés à la législation locale.
-
-## 📋 Fonctionnalités
-
-- **Détection automatique du pays** via email/téléphone
-- **Prix adapté** selon la devise locale (EUR/CHF)
-- **Types d'affaires** spécifiques à chaque juridiction
-- **Documents ZIP** envoyés à l'avocat
-- **Commission 20%** via Stripe
-- **Purge J+7** automatique (RGPD/LPD)
-- **Mentions légales** adaptées par pays
-
-## 🛠️ Stack Technique
-
-- **Frontend**: Next.js 16, TypeScript, Tailwind CSS
-- **Database**: Prisma + SQLite/PostgreSQL
-- **Paiement**: Stripe
-- **Email**: Resend
-- **QR Code**: qrcode (npm)
-
-## 📁 Structure
+## 🏗️ Architecture
 
 ```
 src/
 ├── lib/
-│   ├── countries.ts      # Config FR, BE, CH, LU
-│   ├── location.ts       # Détection pays
-│   └── email-service.ts  # Envoi ZIP + Stripe
+│   ├── audit-service.ts     # Traçabilité juridique
+│   ├── case-service.ts      # Logique métier dossiers
+│   ├── document-service.ts  # Gestion documents
+│   ├── rgpd-service.ts      # Conformité RGPD
+│   ├── email-service.ts     # Envoi emails + ZIP
+│   ├── countries.ts         # Config multi-pays
+│   └── utils.ts             # Utilitaires communs
 ├── app/
-│   ├── scan/[id]/        # Formulaire multi-pays
-│   └── api/scan/         # APIs localisées
+│   ├── api/
+│   │   ├── lawyers/[id]/    # Infos avocat
+│   │   ├── scan/create      # Création dossier
+│   │   ├── scan/upload      # Upload documents
+│   │   └── cron/purge       # CRON RGPD
+│   ├── scan/[id]/           # Page client
+│   └── page.tsx             # Landing page
 └── prisma/
-    └── schema.prisma     # country, priceCurrency
+    └── schema.prisma        # Schéma PostgreSQL
 ```
 
-## 🧪 Démo par Pays
-
-| Pays | URL |
-|------|-----|
-| France | http://localhost:3000/scan/demo-fr |
-| Belgique | http://localhost:3000/scan/demo-be |
-| Suisse | http://localhost:3000/scan/demo-ch |
-| Luxembourg | http://localhost:3000/scan/demo-lu |
-
-## 🔧 Installation
+## 🛠️ Développement
 
 ```bash
+# Installation
 bun install
-npx prisma db push
-npx tsx prisma/seed-flashjuris.ts
+
+# Base de données
+bun run db:push
+
+# Développement
 bun run dev
+
+# Build
+bun run build
 ```
 
-## 📝 Variables d'Environnement
+## 🚀 Déploiement sur Render.com (Gratuit)
 
-```env
-DATABASE_URL="file:./db/custom.db"
-NEXT_PUBLIC_APP_URL="https://flashjuris.com"
-RESEND_API_KEY="re_xxx"
-STRIPE_SECRET_KEY="sk_xxx"
-CRON_SECRET="xxx"
+### Option 1 : Via render.yaml
+
+1. Forkez ce repo sur GitHub
+2. Allez sur [render.com](https://render.com)
+3. New → Blueprint → Connectez votre repo
+4. Render détectera automatiquement `render.yaml`
+
+### Option 2 : Manuel
+
+1. **Créer la base de données**
+   - New → PostgreSQL
+   - Name: `flashjuris-db`
+   - Region: Frankfurt (Europe)
+   - Copier l'URL de connexion
+
+2. **Créer le service web**
+   - New → Web Service
+   - Connectez votre repo GitHub
+   - Build Command: `npm install && npm run build`
+   - Start Command: `npm run start`
+   - Ajoutez les variables d'environnement :
+
+```
+DATABASE_URL=<url-postgres>
+NEXT_PUBLIC_APP_URL=https://votre-app.onrender.com
+RESEND_API_KEY=re_xxx
+STRIPE_SECRET_KEY=sk_xxx
+CRON_SECRET=xxx
 ```
 
-## 📄 License
+## 📋 Variables d'environnement
 
-MIT
+| Variable | Description | Requis |
+|----------|-------------|--------|
+| `DATABASE_URL` | URL PostgreSQL | ✅ |
+| `NEXT_PUBLIC_APP_URL` | URL de l'app | ✅ |
+| `RESEND_API_KEY` | Clé API Resend | ✅ |
+| `STRIPE_SECRET_KEY` | Clé API Stripe | ✅ |
+| `CRON_SECRET` | Secret pour CRON | ✅ |
+
+## 📜 Licence
+
+Propriétaire - Tous droits réservés
