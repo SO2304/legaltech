@@ -1,14 +1,8 @@
 // ============================================
-// TYPES INDEX - DIVORCE SAAS LEGALTECH
-// Export centralisé de tous les types
+// TYPES INDEX - Exports centralisés
 // ============================================
 
-export * from './avocat'
-export * from './client'
-export * from './dossier'
-export * from './document'
-export * from './webhook'
-export * from './form'
-
-// Types utilitaires communs
-export type { JsonValue, DeepPartial, WithId, Timestamps } from './common'
+export * from './api'
+export * from './user'
+export * from './flashcard'
+export * from './study-session'
