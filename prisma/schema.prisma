@@ -1,0 +1,185 @@
+// ============================================
+// FLASHJURIS LEGALTECH - SCHEMA PRISMA
+// PostgreSQL (production ready)
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --------------------------------------------
+// USER - Utilisateurs de la plateforme
+// --------------------------------------------
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  emailVerified   DateTime?
+  passwordHash    String?
+  name            String?
+  role            UserRole @default(USER)
+  isActive        Boolean  @default(true)
+
+  // OAuth
+  oauthProvider   String?
+  oauthId         String?
+
+  // 2FA
+  totpSecret      String?
+  totpEnabled     Boolean  @default(false)
+
+  // Metadata
+  lastLoginAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  flashcards      Flashcard[]
+  studySessions   StudySession[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// --------------------------------------------
+// FLASHCARD - Cartes de révision juridique
+// --------------------------------------------
+model Flashcard {
+  id              String   @id @default(cuid())
+
+  // Contenu
+  question        String   @db.Text
+  answer          String   @db.Text
+  explanation     String?  @db.Text
+
+  // Catégorisation
+  category        FlashcardCategory
+  subCategory     String?
+  difficulty      DifficultyLevel @default(MEDIUM)
+  tags            String[] // Array of tags
+
+  // Source juridique
+  legalReference  String?  // Code civil, pénal, etc.
+  articleNumber   String?
+  jurisprudence   String?  @db.Text
+
+  // Statistiques
+  timesReviewed   Int      @default(0)
+  timesCorrect    Int      @default(0)
+  timesIncorrect  Int      @default(0)
+  averageTime     Float?   // Temps moyen de réponse (secondes)
+
+  // Spaced repetition (Algorithme SM-2)
+  easeFactor      Float    @default(2.5)
+  interval        Int      @default(1) // Jours
+  nextReviewDate  DateTime @default(now())
+
+  // Metadata
+  isPublic        Boolean  @default(false)
+  isArchived      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studySessions   StudySessionCard[]
+
+  @@index([userId])
+  @@index([category])
+  @@index([nextReviewDate])
+  @@index([isArchived])
+  @@map("flashcards")
+}
+
+// --------------------------------------------
+// STUDY SESSION - Sessions d'étude
+// --------------------------------------------
+model StudySession {
+  id              String   @id @default(cuid())
+
+  // Session info
+  startedAt       DateTime @default(now())
+  endedAt         DateTime?
+  duration        Int?     // Durée en secondes
+
+  // Statistiques
+  cardsStudied    Int      @default(0)
+  cardsCorrect    Int      @default(0)
+  cardsIncorrect  Int      @default(0)
+  cardsSkipped    Int      @default(0)
+
+  // Performance
+  averageTime     Float?   // Temps moyen par carte
+  score           Float?   // Score global de la session (%)
+
+  // Relations
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards           StudySessionCard[]
+
+  @@index([userId])
+  @@index([startedAt])
+  @@map("study_sessions")
+}
+
+// --------------------------------------------
+// STUDY SESSION CARD - Cartes étudiées par session
+// --------------------------------------------
+model StudySessionCard {
+  id              String   @id @default(cuid())
+
+  // Résultat
+  wasCorrect      Boolean?
+  wasSkipped      Boolean  @default(false)
+  responseTime    Int?     // Temps de réponse en secondes
+  confidence      Int?     // Niveau de confiance (1-5)
+
+  // Timestamp
+  answeredAt      DateTime @default(now())
+
+  // Relations
+  sessionId       String
+  session         StudySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  flashcardId     String
+  flashcard       Flashcard @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([flashcardId])
+  @@map("study_session_cards")
+}
+
+// --------------------------------------------
+// ENUMS
+// --------------------------------------------
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum FlashcardCategory {
+  DROIT_CIVIL
+  DROIT_PENAL
+  DROIT_ADMINISTRATIF
+  DROIT_CONSTITUTIONNEL
+  DROIT_COMMERCIAL
+  DROIT_TRAVAIL
+  DROIT_FAMILLE
+  DROIT_INTERNATIONAL
+  PROCEDURE_CIVILE
+  PROCEDURE_PENALE
+  AUTRES
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+  EXPERT
+}
