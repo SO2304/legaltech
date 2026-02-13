@@ -1,0 +1,175 @@
+// ============================================
+// FLASHJURIS - SCHEMA PRISMA
+// Multi-juridiction: FR, BE, CH, LU
+// Works with SQLite (dev) and PostgreSQL (prod)
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AVOCAT / LAWYER
+// Multi-juridiction: FR, BE, CH, LU
+// ============================================
+model Lawyer {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  firm          String?
+  phone         String?
+  
+  // Localisation
+  country       String   @default("FR")  // FR, BE, CH, LU
+  barreau       String?  // Barreau d'appartenance
+  barNumber     String?  // Numéro d'inscription au barreau
+  
+  // QR Code
+  qrCodeUrl     String   @unique
+  qrCodeImage   String?
+  
+  // Commission Stripe
+  stripeAccountId  String?  // Compte Stripe Connect
+  stripeOnboarded  Boolean  @default(false)
+  commissionRate   Float    @default(20.0)  // 20% de commission
+  
+  // Statut
+  isActive      Boolean  @default(true)
+  
+  // Dates
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  cases         Case[]
+  
+  @@index([email])
+  @@index([qrCodeUrl])
+  @@index([country])
+}
+
+// ============================================
+// DOSSIER CLIENT / CASE
+// Purge automatique après 7 jours
+// ============================================
+model Case {
+  id          String      @id @default(cuid())
+  reference   String      @unique @default(cuid())
+  
+  // Lien avocat
+  lawyerId    String
+  lawyer      Lawyer      @relation(fields: [lawyerId], references: [id])
+  
+  // Localisation client
+  country     String      @default("FR")  // FR, BE, CH, LU
+  clientName      String?
+  clientEmail     String?
+  clientPhone     String?
+  clientAddress   String?
+  clientCity      String?
+  clientPostalCode String?
+  
+  // Type d'affaire (adapté selon juridiction)
+  caseType        String?
+  caseSubType     String?   // Sous-type si applicable
+  caseDescription String?
+  
+  // Documents
+  documents   Document[]
+  
+  // Statut
+  status      String      @default("pending")  // pending, paid, sent, purged
+  
+  // Prix selon le pays
+  priceCents       Int      @default(14900)  // En centimes
+  priceCurrency    String   @default("EUR")   // EUR ou CHF
+  
+  // Paiement client
+  stripePaymentIntent String?
+  paymentStatus       String    @default("pending")  // pending, succeeded, failed
+  paidAt              DateTime?
+  
+  // Commission avocat (20%)
+  commissionAmount    Int       @default(0)  // En centimes
+  commissionCurrency  String    @default("EUR")
+  commissionPaid      Boolean   @default(false)
+  commissionPaidAt    DateTime?
+  
+  // Email envoyé à l'avocat
+  emailSentAt         DateTime?
+  emailOpened         Boolean   @default(false)
+  emailOpenedAt       DateTime?
+  
+  // Purge automatique J+7
+  purgeAt             DateTime  // Date de purge programmée
+  purgedAt            DateTime? // Date de purge effective
+  isPurged            Boolean   @default(false)
+  
+  // Dates
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  @@index([lawyerId])
+  @@index([status])
+  @@index([reference])
+  @@index([purgeAt])
+  @@index([isPurged])
+  @@index([country])
+}
+
+// ============================================
+// DOCUMENT
+// Purge automatique J+7
+// ============================================
+model Document {
+  id          String    @id @default(cuid())
+  caseId      String
+  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  
+  // Fichier
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  
+  // Stockage temporaire
+  storagePath String
+  fileData    String?   // Base64 pour envoi email
+  
+  // Sécurité
+  hash        String
+  
+  // Purge
+  isPurged    Boolean   @default(false)
+  purgedAt    DateTime?
+  
+  createdAt   DateTime  @default(now())
+  
+  @@index([caseId])
+  @@index([isPurged])
+}
+
+// ============================================
+// ÉVÉNEMENTS (Audit)
+// ============================================
+model Event {
+  id          String    @id @default(cuid())
+  type        String    // case_created, payment_success, email_sent, email_opened, data_purged
+  
+  lawyerId    String?
+  caseId      String?
+  country     String?   // Pays concerné
+  
+  metadata    String?   // JSON (SQLite doesn't support Json type)
+  
+  createdAt   DateTime  @default(now())
+  
+  @@index([type])
+  @@index([country])
+  @@index([createdAt])
+}
