@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: flashjuris
+    env: node
+    buildCommand: bun install && bun run build
+    startCommand: bun run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: flashjuris-db
+          property: connectionString
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://flashjuris.onrender.com
+
+databases:
+  - name: flashjuris-db
+    databaseName: flashjuris
+    user: flashjuris

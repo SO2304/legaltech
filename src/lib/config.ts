@@ -1,5 +1,49 @@
 // ============================================
 // CONFIGURATION DE L'APPLICATION
+// Centralisée et typée
+// ============================================
+
+// ============================================
+// ENVIRONMENT CONFIGURATION
+// ============================================
+
+export const config = {
+  app: {
+    url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    env: process.env.NODE_ENV || 'development',
+    isProduction: process.env.NODE_ENV === 'production',
+    isDevelopment: process.env.NODE_ENV === 'development',
+  },
+  
+  database: {
+    url: process.env.DATABASE_URL,
+  },
+  
+  email: {
+    resendApiKey: process.env.RESEND_API_KEY,
+    fromAddress: process.env.EMAIL_FROM || 'noreply@flashjuris.com',
+  },
+  
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+  },
+  
+  security: {
+    cronSecret: process.env.CRON_SECRET,
+    encryptionKey: process.env.ENCRYPTION_KEY,
+    webhookSecret: process.env.WEBHOOK_SECRET || 'dev-secret',
+  },
+  
+  retention: {
+    documentDays: 7,
+    consentMonths: 24,
+  },
+} as const
+
+// ============================================
+// DOCUMENT TYPES
 // ============================================
 
 // Types de documents requis pour un dossier de divorce complet
