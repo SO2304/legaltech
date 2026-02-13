@@ -1,14 +1,10 @@
 // ============================================
-// API - PURGE AUTOMATIQUE DES DONNÉES
-// CRON job à exécuter toutes les heures
-// Supprime les données après 7 jours
+// API - PURGE AUTOMATIQUE DES DONNÉES (CRON)
+// Exécuter toutes les heures via Vercel Cron ou Render Cron
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-
-// Durée de conservation en jours
-const RETENTION_DAYS = 7
+import { RGPDService } from '@/lib/rgpd-service'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,126 +16,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const now = new Date()
-    let purgedCases = 0
-    let purgedDocuments = 0
+    // Exécuter la purge automatique
+    const report = await RGPDService.runAutoPurge()
     
-    // 1. Purger les dossiers dont la date de purge est dépassée
-    const casesToPurge = await prisma.case.findMany({
-      where: {
-        purgeAt: { lte: now },
-        isPurged: false,
-      },
-      include: {
-        documents: true,
-      },
-    })
-    
-    for (const caseData of casesToPurge) {
-      console.log(`Purging case ${caseData.reference}`)
-      
-      // Supprimer les fichiers physiques (en production, supprimer de S3/Supabase Storage)
-      for (const doc of caseData.documents) {
-        await prisma.document.update({
-          where: { id: doc.id },
-          data: {
-            isPurged: true,
-            purgedAt: now,
-            fileData: null, // Supprimer les données base64
-            storagePath: '', // Vider le chemin
-          },
-        })
-        purgedDocuments++
-      }
-      
-      // Anonymiser les données client
-      await prisma.case.update({
-        where: { id: caseData.id },
-        data: {
-          isPurged: true,
-          purgedAt: now,
-          status: 'purged',
-          // Anonymiser les données client
-          clientName: '[DONNÉES SUPPRIMÉES]',
-          clientEmail: null,
-          clientPhone: null,
-          clientAddress: null,
-          clientCity: null,
-          caseDescription: null,
-        },
-      })
-      
-      // Logger l'événement
-      await prisma.event.create({
-        data: {
-          type: 'data_purged',
-          lawyerId: caseData.lawyerId,
-          caseId: caseData.id,
-          metadata: JSON.stringify({ reason: 'retention_expired' }),
-        },
-      })
-      
-      purgedCases++
-    }
-    
-    // 2. Purger les dossiers non ouverts après 7 jours (sécurité supplémentaire)
-    const unopenedCases = await prisma.case.findMany({
-      where: {
-        emailSentAt: { not: null },
-        emailOpened: false,
-        isPurged: false,
-        createdAt: {
-          lte: new Date(now.getTime() - RETENTION_DAYS * 24 * 60 * 60 * 1000),
-        },
-      },
-    })
-    
-    for (const caseData of unopenedCases) {
-      console.log(`Purging unopened case ${caseData.reference}`)
-      
-      await prisma.case.update({
-        where: { id: caseData.id },
-        data: {
-          isPurged: true,
-          purgedAt: now,
-          status: 'purged',
-          clientName: '[DONNÉES SUPPRIMÉES - MAIL NON OUVERT]',
-          clientEmail: null,
-          clientPhone: null,
-          clientAddress: null,
-          clientCity: null,
-          caseDescription: null,
-        },
-      })
-      
-      await prisma.event.create({
-        data: {
-          type: 'data_purged',
-          lawyerId: caseData.lawyerId,
-          caseId: caseData.id,
-          metadata: JSON.stringify({ reason: 'email_not_opened' }),
-        },
-      })
-      
-      purgedCases++
-    }
-    
-    console.log(`Purge complete: ${purgedCases} cases, ${purgedDocuments} documents`)
+    console.log(`[CRON] Purge complete: ${report.casesProcessed} cases, ${report.documentsPurged} documents`)
     
     return NextResponse.json({
       success: true,
-      purgedAt: now.toISOString(),
-      stats: {
-        cases: purgedCases,
-        documents: purgedDocuments,
-      },
+      timestamp: new Date().toISOString(),
+      ...report,
     })
     
   } catch (error) {
-    console.error('Purge error:', error)
+    console.error('[CRON] Purge error:', error)
+    
     return NextResponse.json(
-      { success: false, error: 'Purge failed' },
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     )
   }
+}
+
+// Support POST pour les webhooks manuels
+export async function POST(request: NextRequest) {
+  return GET(request)
 }

@@ -1,7 +1,7 @@
 // ============================================
 // FLASHJURIS - SCHEMA PRISMA
 // Multi-juridiction: FR, BE, CH, LU
-// Works with SQLite (dev) and PostgreSQL (prod)
+// PostgreSQL (prod)
 // ============================================
 
 generator client {
@@ -47,6 +47,7 @@ model Lawyer {
   
   // Relations
   cases         Case[]
+  auditLogs     AuditLog[]
   
   @@index([email])
   @@index([qrCodeUrl])
@@ -114,6 +115,9 @@ model Case {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   
+  // Relations
+  auditLogs   AuditLog[]
+  
   @@index([lawyerId])
   @@index([status])
   @@index([reference])
@@ -124,6 +128,7 @@ model Case {
 
 // ============================================
 // DOCUMENT
+// Versioning automatique
 // Purge automatique J+7
 // ============================================
 model Document {
@@ -137,25 +142,72 @@ model Document {
   mimeType    String
   size        Int
   
-  // Stockage temporaire
+  // Stockage
   storagePath String
   fileData    String?   // Base64 pour envoi email
   
   // Sécurité
   hash        String
   
+  // ============================================
+  // VERSIONING
+  // ============================================
+  version     Int       @default(1)
+  parentDocId String?   // Référence au document parent si c'est une nouvelle version
+  isLatest    Boolean   @default(true)  // La dernière version du document
+  
   // Purge
   isPurged    Boolean   @default(false)
   purgedAt    DateTime?
   
   createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   
   @@index([caseId])
   @@index([isPurged])
+  @@index([parentDocId])
+  @@index([version])
 }
 
 // ============================================
-// ÉVÉNEMENTS (Audit)
+// AUDIT LOG - TRAÇABILITÉ COMPLÈTE
+// Pour conformité juridique
+// ============================================
+model AuditLog {
+  id          String    @id @default(cuid())
+  
+  // Action
+  action      String    // create, update, delete, purge, email_sent, payment, etc.
+  entityType  String    // case, document, lawyer
+  entityId    String    // ID de l'entité concernée
+  
+  // Détails
+  oldValues   String?   // JSON des anciennes valeurs
+  newValues   String?   // JSON des nouvelles valeurs
+  changes     String?   // Résumé des changements
+  
+  // Contexte
+  ipAddress   String?
+  userAgent   String?
+  
+  // Relations
+  lawyerId    String?
+  lawyer      Lawyer?   @relation(fields: [lawyerId], references: [id])
+  caseId      String?
+  case        Case?     @relation(fields: [caseId], references: [id])
+  
+  createdAt   DateTime  @default(now())
+  
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([lawyerId])
+  @@index([caseId])
+  @@index([createdAt])
+}
+
+// ============================================
+// ÉVÉNEMENTS (Analytics)
 // ============================================
 model Event {
   id          String    @id @default(cuid())
@@ -165,7 +217,7 @@ model Event {
   caseId      String?
   country     String?   // Pays concerné
   
-  metadata    String?   // JSON (SQLite doesn't support Json type)
+  metadata    String?   // JSON (PostgreSQL supporte Json mais on garde string pour compat)
   
   createdAt   DateTime  @default(now())
   
