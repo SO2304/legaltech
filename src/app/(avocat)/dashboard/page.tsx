@@ -146,13 +146,8 @@ export default async function DashboardPage() {
                           </Badge>
                         )}
 
-                        {/* Badge erreur */}
-                        {dossier.statut === 'ERREUR' && (
-                          <Badge variant="destructive">
-                            <AlertTriangle className="w-3 h-3 mr-1" />
-                            Erreur
-                          </Badge>
-                        )}
+                        {/* Badge erreur - NOTE: Aucun statut ERREUR dans l'enum DossierStatus */}
+                        {/* Si besoin d'un statut d'erreur, ajouter à l'enum dans schema.prisma */}
                       </div>
 
                       {/* Informations supplémentaires */}
