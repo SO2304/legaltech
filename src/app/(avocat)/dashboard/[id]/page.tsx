@@ -117,9 +117,11 @@ export default async function DossierDetailsPage({ params }: DossierDetailsPageP
               )}
 
               {dossier.syntheseHTML && (
-                <Button variant="outline">
-                  <Download className="w-4 h-4 mr-2" />
-                  Exporter PDF
+                <Button variant="outline" asChild>
+                  <a href={`/api/dossier/${dossier.id}/export-pdf`} target="_blank">
+                    <Download className="w-4 h-4 mr-2" />
+                    Exporter PDF
+                  </a>
                 </Button>
               )}
             </div>

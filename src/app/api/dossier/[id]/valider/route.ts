@@ -33,20 +33,26 @@ export async function POST(
       )
     }
 
-    // Marquer comme validé
+    // Calculer date de purge : J+7
+    const now = new Date()
+    const datePurge = new Date(now)
+    datePurge.setDate(datePurge.getDate() + 7)
+
+    // Marquer comme validé + programmer purge RGPD
     await prisma.dossier.update({
       where: { id },
       data: {
         statut: StatutDossier.VALIDE,
-        updatedAt: new Date()
+        datePurge: datePurge,
+        updatedAt: now
       }
     })
 
     console.log(`✅ Dossier ${dossier.reference} validé`)
+    console.log(`🗓️ Purge RGPD programmée pour: ${datePurge.toLocaleDateString('fr-FR')}`)
 
     // TODO: Envoyer email au client
     // TODO: Déclencher génération PDF final
-    // TODO: Notifier système de purge (J+7)
 
     return NextResponse.json({
       success: true,
