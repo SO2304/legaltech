@@ -2,21 +2,19 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-<<<<<<< HEAD
-  /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  reactStrictMode: false,
-=======
-  reactStrictMode: true, // ✅ Bonnes pratiques React
+  reactStrictMode: true,
 
-  // ✅ TypeScript - Build fails on errors (sécurité)
+  // TypeScript - Build fails on errors (sécurité)
   typescript: {
     ignoreBuildErrors: false,
   },
 
-  // ✅ Optimisations images
+  // ESLint - Build fails on errors
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+
+  // Optimisations images
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -24,10 +22,10 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60,
   },
 
-  // ✅ Compression
+  // Compression
   compress: true,
 
-  // ✅ Headers sécurité
+  // Headers sécurité
   async headers() {
     return [
       {
@@ -61,7 +59,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
->>>>>>> 28e5996de76f6540c72c6c5f6ef9530f4cda1d98
 };
 
 export default nextConfig;

@@ -1,67 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-<<<<<<< HEAD
-import { prisma } from '@/lib/prisma'
-import { createDossierCheckoutSession } from '@/lib/stripe-service'
-import { getPriceForPays } from '@/lib/geo-service'
-
-export async function POST(request: NextRequest) {
-    try {
-        const { dossierId } = await request.json()
-
-        if (!dossierId) {
-            return NextResponse.json(
-                { error: 'ID du dossier manquant' },
-                { status: 400 }
-            )
-        }
-
-        // 1. Récupérer le dossier et le client
-        const dossier = await prisma.dossier.findUnique({
-            where: { id: dossierId },
-            include: { client: true }
-        })
-
-        if (!dossier) {
-            return NextResponse.json(
-                { error: 'Dossier non trouvé' },
-                { status: 404 }
-            )
-        }
-
-        // 2. Calculer le prix (Session 5 logic: 149€ par défaut ou via geo-service)
-        const amount = getPriceForPays(dossier.pays)
-        const currency = dossier.pays === 'SUISSE' ? 'CHF' : 'EUR'
-
-        // 3. Créer la session Stripe
-        const session = await createDossierCheckoutSession(
-            dossier.id,
-            amount,
-            currency,
-            dossier.client.email
-        )
-
-        // 4. Mettre à jour le statut du dossier
-        await prisma.dossier.update({
-            where: { id: dossier.id },
-            data: {
-                statut: 'EN_ATTENTE_PAIEMENT',
-                montantTTC: amount
-            }
-        })
-
-        return NextResponse.json({ url: session.url })
-
-    } catch (error: any) {
-        console.error('Stripe Session Error:', error)
-        return NextResponse.json(
-            { error: error.message || 'Erreur lors de la création du paiement' },
-            { status: 500 }
-        )
-    }
-=======
 import Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
-import { StatutDossier } from '@prisma/client'
+import { DossierStatus } from '@prisma/client'
 
 /**
  * API POST /api/payment/create
@@ -69,9 +9,7 @@ import { StatutDossier } from '@prisma/client'
  */
 export async function POST(request: NextRequest) {
   try {
-    // Récupérer le dossierId
-    const body = await request.json()
-    const { dossierId } = body
+    const { dossierId } = await request.json()
 
     if (!dossierId) {
       return NextResponse.json(
@@ -80,12 +18,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Vérifier que le dossier existe
     const dossier = await prisma.dossier.findUnique({
       where: { id: dossierId },
-      include: {
-        client: true
-      }
+      include: { client: true }
     })
 
     if (!dossier) {
@@ -95,7 +30,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Vérifier que le dossier n'est pas déjà payé
     if (dossier.stripePaid) {
       return NextResponse.json(
         { error: 'Ce dossier est déjà payé' },
@@ -103,7 +37,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Initialiser Stripe
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY
     if (!stripeSecretKey) {
       console.error('STRIPE_SECRET_KEY manquante')
@@ -114,12 +47,14 @@ export async function POST(request: NextRequest) {
     }
 
     const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2024-12-18.acacia'
+      apiVersion: '2025-01-27.acacia' as any
     })
 
-    // Créer un Payment Intent
+    // Montant en centimes (149€ par défaut pour l'instant)
+    const amount = 14900
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: 14900, // 149,00 € en centimes
+      amount,
       currency: 'eur',
       automatic_payment_methods: {
         enabled: true,
@@ -133,30 +68,27 @@ export async function POST(request: NextRequest) {
       description: `Dossier divorce ${dossier.reference} - ${dossier.pays}`
     })
 
-    // Mettre à jour le dossier avec le Payment Intent ID
     await prisma.dossier.update({
       where: { id: dossierId },
       data: {
         stripePaymentIntent: paymentIntent.id,
-        statut: StatutDossier.EN_ATTENTE_PAIEMENT
+        statut: DossierStatus.EN_ATTENTE_PAIEMENT
       }
     })
 
     console.log(`✅ Payment Intent créé: ${paymentIntent.id} pour dossier ${dossierId}`)
 
-    // Retourner le client secret
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
-      amount: 14900
+      amount
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Erreur création Payment Intent:', error)
     return NextResponse.json(
-      { error: 'Erreur lors de la création du paiement' },
+      { error: error.message || 'Erreur lors de la création du paiement' },
       { status: 500 }
     )
   }
->>>>>>> 28e5996de76f6540c72c6c5f6ef9530f4cda1d98
 }

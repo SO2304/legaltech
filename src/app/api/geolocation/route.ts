@@ -1,21 +1,3 @@
-<<<<<<< HEAD
-import { NextRequest, NextResponse } from 'next/server'
-import { detecterPaysClient, getClientIP } from '@/lib/geolocation-service'
-
-export async function GET(request: NextRequest) {
-    try {
-        const ip = getClientIP(request)
-        const result = await detecterPaysClient(ip)
-
-        return NextResponse.json(result)
-    } catch (error) {
-        console.error('Géolocalisation error:', error)
-        return NextResponse.json(
-            { error: 'Géolocalisation échouée' },
-            { status: 500 }
-        )
-    }
-=======
 // ============================================
 // API GÉOLOCALISATION - DÉTECTION PAYS CLIENT
 // ============================================
@@ -58,5 +40,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
->>>>>>> 28e5996de76f6540c72c6c5f6ef9530f4cda1d98
 }

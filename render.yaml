@@ -1,28 +1,3 @@
-<<<<<<< HEAD
-services:
-  - type: web
-    name: legaltech-platform
-    runtime: node
-    region: frankfurt # RGPD Compliance
-    plan: standard
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: legaltech-db
-          property: connectionString
-      - key: NODE_ENV
-        value: production
-
-  - type: cron
-    name: purge-rgpd
-    runtime: node
-    region: frankfurt
-    schedule: "0 2 * * *" # 2h du matin
-    buildCommand: npm install
-    startCommand: curl -H "Authorization: Bearer $CRON_SECRET" https://${RENDER_EXTERNAL_HOSTNAME}/api/cron/purge
-=======
 # ============================================
 # RENDER.COM - Configuration FlashJuris
 # ============================================
@@ -32,79 +7,38 @@ services:
   - type: web
     name: flashjuris
     runtime: node
-    plan: starter # Ou 'free' pour commencer
-    region: frankfurt # Choisir selon localisation
-
-    # Build Configuration
+    plan: starter 
+    region: frankfurt # RGPD Compliance
     buildCommand: |
       npm install &&
       npx prisma generate &&
       npm run build
-
     startCommand: npm start
-
-    # Health Check
     healthCheckPath: /api/health
-
-    # Environment Variables
     envVars:
       - key: NODE_ENV
         value: production
-
       - key: DATABASE_URL
         fromDatabase:
           name: flashjuris-db
           property: connectionString
-
       - key: DIRECT_URL
         fromDatabase:
           name: flashjuris-db
           property: connectionString
-
-      - key: NEXTAUTH_URL
-        sync: false # À configurer manuellement
-
       - key: NEXTAUTH_SECRET
         generateValue: true
 
-      # Variables à ajouter manuellement dans le dashboard Render
-      # - SMTP_HOST, SMTP_USER, SMTP_PASS (si emails)
-      # - API keys externes si nécessaire
+  # Cron Job - Purge RGPD (J+7)
+  - type: cron
+    name: purge-rgpd
+    runtime: node
+    region: frankfurt
+    schedule: "0 2 * * *" # 2h du matin
+    buildCommand: npm install
+    startCommand: curl -H "Authorization: Bearer $CRON_SECRET" https://${RENDER_EXTERNAL_HOSTNAME}/api/cron/purge
 
-  # PostgreSQL Database
-  - type: pserv
-    name: flashjuris-db
-    plan: starter # Ou 'free' pour commencer
-    region: frankfurt # Même région que le web service
-
-    # Database Configuration
-    ipAllowList: [] # Vide = accessible depuis Render uniquement
-
-    # Auto-generated environment variables:
-    # - DATABASE_URL (connection string)
-
-# ============================================
-# NOTES DE CONFIGURATION
-# ============================================
-
-# 1. DEPLOYMENT:
-#    - Push sur GitHub déclenchera auto-deploy
-#    - Render détecte render.yaml automatiquement
-#
-# 2. MIGRATIONS:
-#    - Ajouter dans build command: npx prisma migrate deploy
-#    - Ou exécuter manuellement: npx prisma db push
-#
-# 3. LOGS:
-#    - Accessible via Render Dashboard
-#    - Logs structurés JSON grâce à logger.ts
-#
-# 4. SCALING:
-#    - Plan Starter: 512 MB RAM
-#    - Plan Standard: 2 GB RAM
-#    - Auto-scaling disponible sur plans supérieurs
-#
-# 5. CUSTOM DOMAIN:
-#    - Configurer dans Render Dashboard > Settings > Custom Domain
-#    - SSL automatique via Let's Encrypt
->>>>>>> 28e5996de76f6540c72c6c5f6ef9530f4cda1d98
+databases:
+  - name: flashjuris-db
+    plan: starter
+    region: frankfurt

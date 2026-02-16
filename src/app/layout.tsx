@@ -14,34 +14,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-<<<<<<< HEAD
   title: "FlashJuris - Plateforme Divorce Multi-juridictions",
   description: "Analyse automatisée de dossiers de divorce pour la France, Belgique, Suisse et Luxembourg via IA.",
   keywords: ["Divorce", "LegalTech", "Analyse Dossier", "IA Juridique", "France", "Belgique", "Suisse", "Luxembourg"],
-=======
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
->>>>>>> 28e5996de76f6540c72c6c5f6ef9530f4cda1d98
-  authors: [{ name: "Z.ai Team" }],
+  authors: [{ name: "LegalTech Team" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/favicon.ico",
   },
-<<<<<<< HEAD
-=======
   openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
+    title: "FlashJuris - Divorce Intelligent",
+    description: "Simplifiez votre procédure de divorce avec l'intelligence artificielle.",
     type: "website",
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-  },
->>>>>>> 28e5996de76f6540c72c6c5f6ef9530f4cda1d98
 };
 
 export default function RootLayout({
@@ -50,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >

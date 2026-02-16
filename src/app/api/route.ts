@@ -1,39 +1,22 @@
-<<<<<<< HEAD
-import { NextResponse } from "next/server";
-
-export async function GET() {
-  return NextResponse.json({ message: "Hello, world!" });
-}
-=======
-// ============================================
-// API ROOT - FlashJuris
-// Point d'entrée de l'API
-// ============================================
-
 import { NextRequest, NextResponse } from 'next/server'
 
+/**
+ * Point d'entrée de l'API FlashJuris
+ */
 export async function GET(request: NextRequest) {
   return NextResponse.json({
     name: 'FlashJuris API',
     version: '1.0.0',
-    description: 'API pour la plateforme de révision juridique FlashJuris',
+    description: 'API pour la plateforme de préparation de dossiers de divorce FlashJuris',
     endpoints: {
       health: '/api/health',
-      flashcards: {
-        list: 'GET /api/flashcards',
-        create: 'POST /api/flashcards',
-        get: 'GET /api/flashcards/[id]',
-        update: 'PATCH /api/flashcards/[id]',
-        delete: 'DELETE /api/flashcards/[id]',
+      geolocation: '/api/geolocation',
+      dossiers: {
+        list: 'GET /api/dossiers',
+        get: 'GET /api/dossiers/[id]',
       },
-      studySessions: {
-        list: 'GET /api/study-sessions',
-        create: 'POST /api/study-sessions',
-        answer: 'POST /api/study-sessions/[id]/answer',
-        complete: 'POST /api/study-sessions/[id]/complete',
-      },
-    },
-    documentation: '/docs/API_ROUTES.md',
+      upload: 'POST /api/upload',
+      analyse: 'POST /api/analyse/dossier'
+    }
   })
 }
->>>>>>> 28e5996de76f6540c72c6c5f6ef9530f4cda1d98
