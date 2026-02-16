@@ -217,9 +217,9 @@ export const COUNTRY_CONFIGS: Record<CountryCode, CountryConfig> = {
 // Prix par pays (en centimes)
 export const PRICES: Record<CountryCode, { amount: number; currency: string; display: string }> = {
   FR: { amount: 14900, currency: 'EUR', display: '149 €' },
-  BE: { amount: 15900, currency: 'EUR', display: '159 €' },
-  CH: { amount: 14900, currency: 'CHF', display: '149 CHF' },
-  LU: { amount: 16900, currency: 'EUR', display: '169 €' },
+  BE: { amount: 14900, currency: 'EUR', display: '149 €' },
+  CH: { amount: 18900, currency: 'CHF', display: '189 CHF' },
+  LU: { amount: 15900, currency: 'EUR', display: '159 €' },
 }
 
 // Commission avocat (20%)

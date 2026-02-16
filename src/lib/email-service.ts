@@ -4,6 +4,7 @@
 // ============================================
 
 import { prisma } from '@/lib/prisma'
+import JSZip from 'jszip'
 
 interface CaseData {
   id: string
@@ -142,25 +143,19 @@ export async function sendDocumentsToLawyer(caseId: string): Promise<boolean> {
  * Crée un ZIP en base64 à partir des documents
  */
 async function createZipFromDocuments(documents: any[]): Promise<string> {
-  // En production, utiliser JSZip ou Archiver
-  // Pour l'instant, on retourne une simulation
   if (documents.length === 0) {
     return ''
   }
   
-  // Simuler un ZIP (en production, utiliser la librairie JSZip)
-  const fileInfos = documents.map(d => d.originalName).join(', ')
-  console.log(`Creating ZIP with: ${fileInfos}`)
+  const zip = new JSZip()
   
-  // TODO: Implémenter avec JSZip
-  // const JSZip = require('jszip')
-  // const zip = new JSZip()
-  // for (const doc of documents) {
-  //   zip.file(doc.originalName, doc.fileData, { base64: true })
-  // }
-  // return await zip.generateAsync({ type: 'base64' })
+  for (const doc of documents) {
+    if (doc.fileData) {
+        zip.file(doc.originalName, doc.fileData, { base64: true })
+    }
+  }
   
-  return Buffer.from(`ZIP_FILES:${documents.length}`).toString('base64')
+  return await zip.generateAsync({ type: 'base64' })
 }
 
 /**
