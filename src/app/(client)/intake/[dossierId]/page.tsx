@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, use } from 'react'
+import { useState, use, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -42,6 +42,7 @@ export default function IntakePage({ params }: { params: Promise<{ dossierId: st
   const [avocatId, setAvocatId] = useState<string | null>(null)
   const [dossierId, setDossierId] = useState<string | null>(null)
   const [dossierRef, setDossierRef] = useState<string | null>(null)
+  const [datePurge, setDatePurge] = useState<Date | null>(null)
   const [uploadedDocs, setUploadedDocs] = useState<Record<string, { name: string; status: 'uploading' | 'ok' | 'error' }>>({})
 
   const [info, setInfo] = useState({ prenom: '', nom: '', email: '', telephone: '' })
@@ -95,6 +96,10 @@ export default function IntakePage({ params }: { params: Promise<{ dossierId: st
       if (data.success) {
         setDossierId(data.dossier.id)
         setDossierRef(data.dossier.reference)
+        // Store the purge date from the response
+        if (data.dossier.datePurge) {
+          setDatePurge(new Date(data.dossier.datePurge))
+        }
         setStep('documents')
       } else {
         alert(data.error || 'Erreur lors de la création du dossier')
@@ -143,7 +148,7 @@ export default function IntakePage({ params }: { params: Promise<{ dossierId: st
               {/* Security countdown badge */}
               <div className="flex items-center gap-1.5 text-xs text-navy/50 bg-pearl px-3 py-1.5 rounded-full">
                 <Shield className="w-3.5 h-3.5" />
-                <span>Purge dans 6 jours</span>
+                <span>{datePurge ? `Purge dans ${Math.max(0, Math.ceil((new Date(datePurge).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} jours` : 'Purge imminente'}</span>
               </div>
             </div>
           )}

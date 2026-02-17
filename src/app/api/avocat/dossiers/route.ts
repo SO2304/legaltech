@@ -7,10 +7,25 @@ export async function GET(request: NextRequest) {
     const avocatId = searchParams.get('avocatId')
     const dossierId = searchParams.get('id')
     
-    // Get single dossier by ID
+    // Verify avocat exists and is active - server-side authentication check
+    if (!avocatId) return NextResponse.json({ error: 'avocatId requis' }, { status: 400 })
+    
+    const avocat = await prisma.avocat.findUnique({
+      where: { id: avocatId },
+      select: { id: true, isActive: true }
+    })
+    
+    if (!avocat || !avocat.isActive) {
+      return NextResponse.json({ error: 'Avocat invalide ou inactif' }, { status: 403 })
+    }
+    
+    // Get single dossier by ID (only if belongs to this avocat)
     if (dossierId) {
-      const dossier = await prisma.dossier.findUnique({
-        where: { id: dossierId },
+      const dossier = await prisma.dossier.findFirst({
+        where: { 
+          id: dossierId,
+          avocatId: avocatId  // Ensure dossier belongs to this avocat
+        },
         include: {
           client: { select: { id: true, email: true, nom: true, prenom: true, telephone: true, pays: true } },
           documents: true
@@ -23,8 +38,6 @@ export async function GET(request: NextRequest) {
     }
     
     // Get all dossiers for an avocat
-    if (!avocatId) return NextResponse.json({ error: 'avocatId requis' }, { status: 400 })
-
     const dossiers = await prisma.dossier.findMany({
       where: { avocatId },
       include: {

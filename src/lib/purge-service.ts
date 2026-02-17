@@ -18,8 +18,18 @@ export async function purgerDossiersExpires() {
   })
   
   for (const dossier of dossiers) {
-    for (const doc of dossier.documents) {
-      await supabase.storage.from('documents').remove([doc.cheminStorage])
+    // Collect all file paths to delete
+    const filePaths = dossier.documents.map(doc => doc.nomStockage)
+    
+    // Delete all documents for this dossier from storage
+    if (filePaths.length > 0) {
+      const { error: deleteError } = await supabase.storage
+        .from('documents')
+        .remove(filePaths)
+      
+      if (deleteError) {
+        console.error('Error deleting documents:', deleteError)
+      }
     }
     
     await prisma.dossier.update({

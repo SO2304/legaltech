@@ -2,6 +2,32 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Pays } from '@prisma/client'
 
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const action = searchParams.get('action')
+    
+    // Get available avocat for distribution
+    if (action === 'getAvocat') {
+      const avocat = await prisma.avocat.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: 'asc' }
+      })
+      
+      if (!avocat) {
+        return NextResponse.json({ error: 'Aucun avocat disponible' }, { status: 404 })
+      }
+      
+      return NextResponse.json({ avocatId: avocat.id })
+    }
+    
+    return NextResponse.json({ error: 'Action non reconnue' }, { status: 400 })
+  } catch (error) {
+    console.error('GET error:', error)
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -66,6 +92,7 @@ export async function POST(request: NextRequest) {
       dossier: {
         id: dossier.id,
         reference: dossier.reference,
+        datePurge: dossier.datePurge,
         montantTTC: dossier.montantTTC,
         fraisGestion: dossier.fraisGestion
       },
