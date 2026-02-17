@@ -2,56 +2,48 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const action = searchParams.get('action')
-
-  // Seed action to create default avocat
-  if (action === 'seed') {
-    try {
-      const existingAvocat = await prisma.avocat.findFirst()
-      
-      if (!existingAvocat) {
-        const avocat = await prisma.avocat.create({
-          data: {
-            email: 'test@avocat.fr',
-            passwordHash: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', // SHA256 of "password"
-            nom: 'Dupont',
-            prenom: 'Jean'
-          }
-        })
-        
-        return NextResponse.json({ 
-          status: 'ok', 
-          message: 'Default avocat created',
-          avocat: { id: avocat.id, email: avocat.email }
-        })
-      }
-      
-      return NextResponse.json({ 
-        status: 'ok', 
-        message: 'Avocat already exists',
-        avocat: { id: existingAvocat.id, email: existingAvocat.email }
-      })
-    } catch (error) {
-      console.error('Seed error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      return NextResponse.json({ error: 'Seed failed', details: errorMessage }, { status: 500 })
+  const start = Date.now()
+  const checks: Record<string, { status: string; time?: number; error?: string }> = {}
+  
+  // Check 1: Database connection
+  try {
+    const dbStart = Date.now()
+    await prisma.$queryRaw`SELECT 1`
+    checks.database = { status: 'ok', time: Date.now() - dbStart }
+  } catch (error) {
+    checks.database = { 
+      status: 'error', 
+      error: error instanceof Error ? error.message : 'Database connection failed' 
     }
   }
 
-  // Debug action to check environment
-  if (action === 'debug') {
-    const dbUrl = process.env.DATABASE_URL
-    const hasDbUrl = !!dbUrl
-    const dbUrlMasked = dbUrl ? dbUrl.replace(/:[^:@]+@/, ':***@') : 'not set'
-    
-    return NextResponse.json({
-      hasDatabaseUrl: hasDbUrl,
-      databaseUrl: dbUrlMasked,
-      nodeEnv: process.env.NODE_ENV,
-      directUrl: process.env.DIRECT_URL ? 'set' : 'not set'
-    })
+  // Check 2: Environment variables
+  const envVars = {
+    DATABASE_URL: !!process.env.DATABASE_URL,
+    DIRECT_URL: !!process.env.DIRECT_URL,
+    ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
+    STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
+    SUPABASE_URL: !!process.env.SUPABASE_URL,
+  }
+  checks.environment = { 
+    status: Object.values(envVars).every(v => v) ? 'ok' : 'warning',
+    ...envVars 
   }
 
-  return NextResponse.json({ status: 'ok', version: '1.0.0' })
+  const totalTime = Date.now() - start
+  const allOk = checks.database.status === 'ok'
+  
+  return NextResponse.json({
+    status: allOk ? 'ok' : 'degraded',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime?.() || 0,
+    responseTime: totalTime,
+    checks,
+    version: '1.0.0'
+  }, { status: allOk ? 200 : 503 })
+}
+
+// Also handle HEAD request for health checks
+export async function HEAD() {
+  return new NextResponse(null, { status: 200 })
 }
