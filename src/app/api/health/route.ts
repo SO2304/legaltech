@@ -34,8 +34,23 @@ export async function GET(request: NextRequest) {
       })
     } catch (error) {
       console.error('Seed error:', error)
-      return NextResponse.json({ error: 'Seed failed' }, { status: 500 })
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return NextResponse.json({ error: 'Seed failed', details: errorMessage }, { status: 500 })
     }
+  }
+
+  // Debug action to check environment
+  if (action === 'debug') {
+    const dbUrl = process.env.DATABASE_URL
+    const hasDbUrl = !!dbUrl
+    const dbUrlMasked = dbUrl ? dbUrl.replace(/:[^:@]+@/, ':***@') : 'not set'
+    
+    return NextResponse.json({
+      hasDatabaseUrl: hasDbUrl,
+      databaseUrl: dbUrlMasked,
+      nodeEnv: process.env.NODE_ENV,
+      directUrl: process.env.DIRECT_URL ? 'set' : 'not set'
+    })
   }
 
   return NextResponse.json({ status: 'ok', version: '1.0.0' })
