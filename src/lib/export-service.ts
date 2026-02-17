@@ -93,34 +93,35 @@ export async function getDossierForExport(dossierId: string, avocatId: string): 
 
   if (!dossier) return null
 
-  return {
-    dossier: {
-      id: dossier.id,
-      reference: dossier.reference,
-      statut: dossier.statut,
-      pays: dossier.pays,
-      typeProcedure: dossier.typeProcedure,
-      dateMariage: dossier.dateMariage,
-      nombreEnfants: dossier.nombreEnfants,
-      analyseIA: dossier.analyseIA,
-      syntheseHTML: dossier.syntheseHTML,
-      sourcesLegales: dossier.sourcesLegales,
-      montantTTC: dossier.montantTTC,
-      fraisGestion: dossier.fraisGestion,
-      stripePaidAt: dossier.stripePaidAt,
-      createdAt: dossier.createdAt,
-      updatedAt: dossier.updatedAt
-    },
-    client: {
-      nom: dossier.client.nom,
-      prenom: dossier.client.prenom,
-      email: dossier.client.email,
-      telephone: dossier.client.telephone,
-      pays: dossier.client.pays,
-      dateBirth: dossier.client.dateBirth,
-      adresse: dossier.client.adresse,
-      ville: dossier.client.ville
-    },
+  const client = dossier.client as any;
+    return {
+      dossier: {
+        id: dossier.id,
+        reference: dossier.reference,
+        statut: dossier.statut,
+        pays: dossier.pays,
+        typeProcedure: dossier.typeProcedure,
+        dateMariage: dossier.dateMariage,
+        nombreEnfants: dossier.nombreEnfants,
+        analyseIA: dossier.analyseIA,
+        syntheseHTML: dossier.syntheseHTML,
+        sourcesLegales: dossier.sourcesLegales,
+        montantTTC: dossier.montantTTC,
+        fraisGestion: dossier.fraisGestion,
+        stripePaidAt: dossier.stripePaidAt,
+        createdAt: dossier.createdAt,
+        updatedAt: dossier.updatedAt
+      },
+      client: {
+        nom: client.nom,
+        prenom: client.prenom,
+        email: client.email,
+        telephone: client.telephone,
+        pays: client.pays,
+        dateBirth: client.dateBirth,
+        adresse: client.adresse,
+        ville: client.ville
+      },
     avocat: {
       nom: dossier.avocat.nom,
       prenom: dossier.avocat.prenom,
