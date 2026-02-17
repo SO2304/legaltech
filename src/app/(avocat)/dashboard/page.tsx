@@ -3,260 +3,199 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, FileText, Clock, CheckCircle, AlertCircle, Users, DollarSign, LogOut } from 'lucide-react'
-import { DossierStatus } from '@prisma/client'
+import { Input } from '@/components/ui/input'
+import { Loader2, Scale, LogOut, Search, FileText, CheckCircle, Eye } from 'lucide-react'
 
 interface Dossier {
   id: string
   reference: string
-  statut: DossierStatus
+  statut: string
   montantTTC: number
   stripePaid: boolean
   createdAt: string
-  client: {
-    email: string
-    nom: string
-    prenom: string
-    pays: string
-  }
-  documents: {
-    id: string
-    type: string
-    nomOriginal: string
-    estValide: boolean
-  }[]
+  client: { email: string; nom: string; prenom: string; pays: string }
+  documents: { id: string; type: string }[]
 }
 
-const statusLabels: Record<DossierStatus, { label: string; color: string }> = {
-  BROUILLON: { label: 'Brouillon', color: 'bg-gray-100 text-gray-800' },
-  EN_ATTENTE_PAIEMENT: { label: 'En attente paiement', color: 'bg-yellow-100 text-yellow-800' },
-  PAYE: { label: 'Payé', color: 'bg-blue-100 text-blue-800' },
-  EN_ANALYSE: { label: 'En analyse', color: 'bg-purple-100 text-purple-800' },
-  ANALYSE_TERMINEE: { label: 'Analyse terminée', color: 'bg-green-100 text-green-800' },
-  VALIDE: { label: 'Validé', color: 'bg-emerald-100 text-emerald-800' },
-  PURGE: { label: 'Purgé', color: 'bg-red-100 text-red-800' }
+const STATUS: Record<string, { label: string; color: string }> = {
+  BROUILLON:           { label: 'Brouillon',        color: 'bg-slate-100 text-slate-600' },
+  EN_ATTENTE_PAIEMENT: { label: 'Attente paiement', color: 'bg-amber-100 text-amber-700' },
+  PAYE:                { label: 'Payé',             color: 'bg-blue-100 text-blue-700' },
+  EN_ANALYSE:          { label: 'En analyse',       color: 'bg-purple-100 text-purple-700' },
+  ANALYSE_TERMINEE:    { label: 'Analyse terminée', color: 'bg-green-100 text-green-700' },
+  VALIDE:              { label: 'Validé',           color: 'bg-emerald-100 text-emerald-700' },
+  PURGE:               { label: 'Purgé',            color: 'bg-red-100 text-red-600' },
+}
+
+const PAYS: Record<string, string> = {
+  FRANCE: '🇫🇷', BELGIQUE: '🇧🇪', SUISSE: '🇨🇭', LUXEMBOURG: '🇱🇺'
 }
 
 export default function DashboardPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [dossiers, setDossiers] = useState<Dossier[]>([])
-  const [avocat, setAvocat] = useState<{ nom: string; prenom: string; email: string } | null>(null)
-
-  // For demo, use a mock avocat ID
-  const demoAvocatId = 'demo-avocat'
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('ALL')
+  const [avocat, setAvocat] = useState<{ id: string; nom: string; prenom: string } | null>(null)
 
   useEffect(() => {
-    // Mock lawyer data for demo
-    setAvocat({
-      nom: 'Dupont',
-      prenom: 'Jean',
-      email: 'jean.dupont@cabinet.fr'
-    })
+    const stored = sessionStorage.getItem('avocat')
+    if (!stored) {
+      router.push('/login-avocat')
+      return
+    }
+    const a = JSON.parse(stored)
+    setAvocat(a)
+    fetch(`/api/avocat/dossiers?avocatId=${a.id}`)
+      .then(r => r.json())
+      .then(data => { if (data.dossiers) setDossiers(data.dossiers) })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [router])
 
-    // Mock dossiers for demo
-    const mockDossiers: Dossier[] = [
-      {
-        id: '1',
-        reference: 'DIV-2024-001',
-        statut: DossierStatus.ANALYSE_TERMINEE,
-        montantTTC: 149,
-        stripePaid: true,
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        client: {
-          email: 'marie.martin@email.fr',
-          nom: 'Martin',
-          prenom: 'Marie',
-          pays: 'FRANCE'
-        },
-        documents: [
-          { id: '1', type: 'CARTE_IDENTITE', nomOriginal: 'carte_id.jpg', estValide: true },
-          { id: '2', type: 'ACTE_MARIAGE', nomOriginal: 'acte_mariage.pdf', estValide: true }
-        ]
-      },
-      {
-        id: '2',
-        reference: 'DIV-2024-002',
-        statut: DossierStatus.PAYE,
-        montantTTC: 149,
-        stripePaid: true,
-        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        client: {
-          email: 'paul.durand@email.fr',
-          nom: 'Durand',
-          prenom: 'Paul',
-          pays: 'FRANCE'
-        },
-        documents: [
-          { id: '3', type: 'CARTE_IDENTITE', nomOriginal: 'passport.pdf', estValide: true }
-        ]
-      },
-      {
-        id: '3',
-        reference: 'DIV-2024-003',
-        statut: DossierStatus.EN_ATTENTE_PAIEMENT,
-        montantTTC: 149,
-        stripePaid: false,
-        createdAt: new Date().toISOString(),
-        client: {
-          email: 'sophie.leroy@email.fr',
-          nom: 'Leroy',
-          prenom: 'Sophie',
-          pays: 'BELGIQUE'
-        },
-        documents: []
-      }
-    ]
-
-    setDossiers(mockDossiers)
-    setLoading(false)
-  }, [])
+  const filtered = dossiers.filter(d => {
+    const q = search.toLowerCase()
+    const matchQ = !q ||
+      d.reference.toLowerCase().includes(q) ||
+      `${d.client.prenom} ${d.client.nom}`.toLowerCase().includes(q) ||
+      d.client.email.toLowerCase().includes(q)
+    return matchQ && (filter === 'ALL' || d.statut === filter)
+  })
 
   const stats = {
     total: dossiers.length,
     payes: dossiers.filter(d => d.stripePaid).length,
-    analysesTerminees: dossiers.filter(d => d.statut === DossierStatus.ANALYSE_TERMINEE).length,
-    revenue: dossiers.filter(d => d.stripePaid).reduce((sum, d) => sum + d.montantTTC, 0)
+    analyses: dossiers.filter(d => ['ANALYSE_TERMINEE', 'VALIDE'].includes(d.statut)).length,
+    ca: dossiers.filter(d => d.stripePaid).reduce((s, d) => s + d.montantTTC, 0),
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    )
+  const handleLogout = () => {
+    sessionStorage.removeItem('avocat')
+    router.push('/login-avocat')
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold">Tableau de bord</h1>
+      <header className="border-b bg-white sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Scale className="w-6 h-6 text-slate-800" />
+            <span className="font-bold text-lg text-slate-800">Lexia</span>
+            <span className="text-slate-400 text-sm ml-2">Espace avocat</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="font-medium">{avocat?.prenom} {avocat?.nom}</p>
-              <p className="text-sm text-muted-foreground">{avocat?.email}</p>
-            </div>
-            <Button variant="outline" size="icon">
-              <LogOut className="w-4 h-4" />
+          <div className="flex items-center gap-3">
+            {avocat && (
+              <span className="text-sm text-slate-600">{avocat.prenom} {avocat.nom}</span>
+            )}
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-1" /> Déconnexion
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.total}</p>
-                  <p className="text-sm text-muted-foreground">Total dossiers</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.payes}</p>
-                  <p className="text-sm text-muted-foreground">Payés</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.analysesTerminees}</p>
-                  <p className="text-sm text-muted-foreground">Analysés</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                  <DollarSign className="w-6 h-6 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.revenue}€</p>
-                  <p className="text-sm text-muted-foreground">Revenus</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <main className="container mx-auto px-6 py-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Total dossiers', value: stats.total },
+            { label: 'Payés', value: stats.payes },
+            { label: 'Analyses terminées', value: stats.analyses },
+            { label: "Chiffre d'affaires", value: `${stats.ca.toFixed(0)}€` },
+          ].map((s, i) => (
+            <Card key={i} className="border-slate-100">
+              <CardContent className="p-4">
+                <p className="text-2xl font-bold text-slate-900">{s.value}</p>
+                <p className="text-xs text-slate-500 mt-1">{s.label}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* Dossiers List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Mes dossiers</CardTitle>
-            <CardDescription>
-              Liste de tous vos dossiers de divorce
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {dossiers.map((dossier) => (
-                <div
-                  key={dossier.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
-                  onClick={() => router.push(`/dashboard/${dossier.id}`)}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
-                      <Users className="w-5 h-5 text-slate-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{dossier.client.prenom} {dossier.client.nom}</p>
-                      <p className="text-sm text-muted-foreground">{dossier.client.email}</p>
-                    </div>
-                  </div>
+        <div className="flex flex-wrap gap-3 mb-6">
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              className="pl-9"
+              placeholder="Rechercher un dossier ou client..."
+              value={search}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {['ALL', 'PAYE', 'EN_ANALYSE', 'ANALYSE_TERMINEE', 'VALIDE'].map(f => (
+              <Button
+                key={f}
+                size="sm"
+                variant={filter === f ? 'default' : 'outline'}
+                className={filter === f ? 'bg-slate-900' : ''}
+                onClick={() => setFilter(f)}
+              >
+                {f === 'ALL' ? 'Tous' : STATUS[f]?.label ?? f}
+              </Button>
+            ))}
+          </div>
+        </div>
 
-                  <div className="flex items-center gap-4">
-                    <Badge className={statusLabels[dossier.statut].color}>
-                      {statusLabels[dossier.statut].label}
-                    </Badge>
-                    <div className="text-right">
-                      <p className="font-medium">{dossier.montantTTC}€</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(dossier.createdAt).toLocaleDateString('fr-FR')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <Card className="border-slate-100">
+            <CardContent className="text-center py-16">
+              <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500 font-medium">Aucun dossier trouvé</p>
               {dossiers.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Aucun dossier pour le moment</p>
-                </div>
+                <p className="text-sm text-slate-400 mt-2">
+                  Les dossiers apparaîtront ici après paiement des clients.
+                </p>
               )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map(d => {
+              const st = STATUS[d.statut] ?? { label: d.statut, color: 'bg-slate-100 text-slate-600' }
+              return (
+                <Card key={d.id} className="border-slate-100 hover:border-slate-300 transition-colors cursor-pointer">
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-1 flex-wrap">
+                          <span className="font-mono text-sm font-semibold text-slate-800">{d.reference}</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>
+                            {st.label}
+                          </span>
+                          {d.stripePaid && (
+                            <span className="text-xs text-green-600 font-medium">✓ {d.montantTTC}€ payé</span>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium text-slate-700">
+                          {d.client.prenom} {d.client.nom}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {d.client.email} · {PAYS[d.client.pays] ?? ''} {d.client.pays}
+                          · {d.documents.length} doc(s)
+                          · {new Date(d.createdAt).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="bg-slate-900 hover:bg-slate-700 flex-shrink-0"
+                        onClick={() => router.push(`/dashboard/${d.id}`)}
+                      >
+                        <Eye className="w-4 h-4 mr-1" /> Voir
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
       </main>
     </div>
   )

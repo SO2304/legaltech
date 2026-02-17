@@ -20,7 +20,11 @@ export async function POST(request: NextRequest) {
       data: { statut: 'EN_ANALYSE' }
     })
     
-    const analyse = await analyserDossierComplet(dossier.pays, [], 'divorce')
+    const analyse = await analyserDossierComplet(
+      dossier.pays, 
+      dossier.documents.map(d => ({ type: d.type, texte: d.texteExtrait || '' })),
+      dossier.typeProcedure || 'divorce'
+    )
     
     await prisma.dossier.update({
       where: { id: dossierId },

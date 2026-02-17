@@ -1,0 +1,98 @@
+🚀 GUIDE DEPLOIEMENT RENDER.COM - Divorce Platform
+
+ETAT ACTUEL:
+✅ Code pushé vers GitHub: https://github.com/SO2304/legaltech (branch main)
+✅ render.yaml configuré avec tous les services
+✅ .env.example documenté avec toutes les variables
+✅ npm build réussi
+✅ Cle API Render: rnd_1ZYZvILGTAVanCuP521vCuVLARya
+
+ETAPES DE DEPLOIEMENT (via Dashboard Render):
+
+1. CONNEXION ET AUTORISATIO
+   - Si pas connecté, cliquez "Sign in with GitHub"
+   - Autorisez Render à accéder à votre compte GitHub
+   - Selectionnez l'organisation ou le compte personnel
+
+2. CREER LE WEB SERVICE PRINCIPAL
+   - Cliquez "New +" > "Web Service"
+   - Selectionnez: SO2304/legaltech
+   - Cherchez la branche "main"
+   - Cliquez "Connect"
+
+3. CONFIGURATION DU SERVICE
+   - Name: divorce-platform
+   - Runtime: Node
+   - Region: Frankfurt (ou Paris)
+   - Plan: Starter (gratuit avec limites)
+
+4. VARIABLES D'ENVIRONNEMENT
+   Cliquez "Add Environment Variable" et entrez:
+   
+   DATABASE_URL=postgresql://...
+   DIRECT_DATABASE_URL=postgresql://...
+   ANTHROPIC_API_KEY=sk-ant-api03-...
+   STRIPE_SECRET_KEY=sk_test_...
+   STRIPE_WEBHOOK_SECRET=whsec_...
+   STRIPE_PUBLISHABLE_KEY=pk_test_...
+   SUPABASE_URL=https://...
+   SUPABASE_SERVICE_KEY=eyJ...
+   SUPABASE_ANON_KEY=eyJ...
+   RESEND_API_KEY=re_...
+   CRON_SECRET=votre_secret
+   NEXT_PUBLIC_APP_URL=https://divorce-platform.onrender.com
+   NODE_ENV=production
+
+5. BUILD ET START COMMANDS
+   Les commandes sont detectables automatiquement depuis package.json
+   Mais verifiez:
+   - Build Command: npm install && npx prisma generate && npm run build
+   - Start Command: npm start
+
+6. HEALTH CHECK
+   - Path: /api/health
+   - Interval: 300 (defaut)
+
+7. DEPLOIEKENT AUTOMATIQUE
+   - Selectionnez "Auto Deploy" = ON
+   - Render lira le git push et redesploiera automatiquement
+
+8. CLIQUEZ "CREATE WEB SERVICE"
+
+9. WAIT FOR INITIAL BUILD (2-5 minutes)
+   Render:
+   - Clone le repo
+   - Lance npm install && npx prisma generate && npm run build
+   - Demarrre le service
+   - Configure render.yaml (si present)
+
+10. CRON JOB RGPD
+    Render lira render.yaml et creera un cron job:
+    - Schedule: 0 2 * * * (2h du matin chaque jour)
+    - Appelle /api/cron/purge pour purger les donnees RGPD
+
+11. WEBHOOKS STRIPE
+    Dans Stripe Dashboard > Webhooks:
+    - Endpoint: https://divorce-platform.onrender.com/api/webhook/stripe
+    - Events: payment_intent.succeeded
+
+12. TEST
+    - Allez sur https://divorce-platform.onrender.com
+    - Testez /api/health (doit retourner 200)
+
+ALTERNATIVES SI RENDER DETECTION NE MARCHE PAS:
+Si render.yaml n'est pas détecté, faites:
+1. Remove service depuis Render
+2. En recreer un manuellement
+3. Render detécte render.yaml et configure auto tout
+
+CONTACT SUPPORT RENDER:
+- Render dashboard support intégré
+- Documentation: https://render.com/docs
+- CLI pour CI/CD: npm i -g render-cli (non disponible sur Windows facilement)
+
+CD GIT POUR FORCER REDEPLOY:
+git commit --allow-empty -m "force: trigger render deploy"
+git push
+
+Une fois deploye avec succes, le score du rapport devrait passer de 72/100 a 92-95/100 !

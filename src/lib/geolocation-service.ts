@@ -10,7 +10,7 @@ interface GeolocationResult {
 
 export async function detecterPaysClient(ipAddress: string): Promise<GeolocationResult> {
   try {
-    const response = await fetch(`http://api.ipstack.com/${ipAddress}?access_key=${process.env.IPSTACK_KEY}`)
+    const response = await fetch(`https://api.ipstack.com/${ipAddress}?access_key=${process.env.IPSTACK_KEY}`)
     const data = await response.json()
     
     const pays = mapCountryCodeToPays(data.country_code)

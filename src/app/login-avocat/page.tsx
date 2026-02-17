@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, Scale, Eye, EyeOff } from 'lucide-react'
 
-export default function LoginPage() {
+export default function LoginAvocat() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -50,6 +50,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-white mb-1">Espace Avocat</h1>
           <p className="text-slate-400 text-sm">Connectez-vous pour gérer vos dossiers</p>
         </div>
+
         <Card className="border-0 shadow-2xl">
           <CardHeader>
             <CardTitle>Connexion</CardTitle>
@@ -58,29 +59,56 @@ export default function LoginPage() {
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">{error}</div>
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+                  {error}
+                </div>
               )}
               <div className="space-y-1">
                 <Label>Email</Label>
-                <Input type="email" placeholder="avocat@cabinet.fr" value={email} onChange={e => setEmail(e.target.value)} required />
+                <Input
+                  type="email"
+                  placeholder="avocat@cabinet.fr"
+                  value={email}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-1">
                 <Label>Mot de passe</Label>
                 <div className="relative">
-                  <Input type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
-              <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-700" disabled={loading}>
-                {loading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Connexion...</> : 'Se connecter'}
+              <Button
+                type="submit"
+                className="w-full bg-slate-900 hover:bg-slate-700"
+                disabled={loading}
+              >
+                {loading
+                  ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Connexion...</>
+                  : 'Se connecter'
+                }
               </Button>
             </form>
           </CardContent>
         </Card>
-        <p className="text-center text-slate-500 text-xs mt-6">Conforme RGPD · Hébergement Europe</p>
+
+        <p className="text-center text-slate-500 text-xs mt-6">
+          Conforme RGPD · Hébergement Europe
+        </p>
       </div>
     </div>
   )

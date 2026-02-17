@@ -191,10 +191,19 @@ export async function extraireDocumentOCRFromURL(
   pays: Pays
 ): Promise<OCRResult> {
   try {
-    // Download image
+    // Download image - use fetch API for edge compatibility
     const response = await fetch(imageUrl)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status}`)
+    }
     const buffer = await response.arrayBuffer()
-    const base64 = Buffer.from(buffer).toString('base64')
+    // Convert to base64 using Uint8Array (edge-compatible)
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i])
+    }
+    const base64 = btoa(binary)
     
     return extraireDocumentOCR(base64, type, pays)
   } catch (error) {

@@ -5,12 +5,22 @@ import { prisma } from '@/lib/prisma'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
-    const signature = request.headers.get('stripe-signature')!
+    const signature = request.headers.get('stripe-signature')
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+    
+    if (!signature) {
+      return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
+    }
+    
+    if (!webhookSecret) {
+      console.error('STRIPE_WEBHOOK_SECRET is not defined')
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    }
     
     const event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      webhookSecret
     )
     
     if (event.type === 'payment_intent.succeeded') {

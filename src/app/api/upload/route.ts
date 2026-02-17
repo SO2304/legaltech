@@ -5,10 +5,14 @@ import { validerDocumentRAG } from '@/lib/rag-service'
 import { prisma } from '@/lib/prisma'
 import { DocumentType, Pays } from '@prisma/client'
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-)
+const supabaseUrl = process.env.SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be defined')
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,9 +34,14 @@ export async function POST(request: NextRequest) {
     
     if (error) throw error
     
-    // Convert file to base64 for OCR
+    // Convert file to base64 for OCR - use edge-compatible method
     const bytes = await file.arrayBuffer()
-    const base64 = Buffer.from(bytes).toString('base64')
+    const uint8Array = new Uint8Array(bytes)
+    let binary = ''
+    for (let i = 0; i < uint8Array.byteLength; i++) {
+      binary += String.fromCharCode(uint8Array[i])
+    }
+    const base64 = btoa(binary)
     
     // Run OCR
     const ocrResult = await extraireDocumentOCR(base64, type, pays)
