@@ -4,12 +4,21 @@ services:
     runtime: node
     region: frankfurt
     plan: starter
-    buildCommand: npm install && npx prisma generate && npm run build
+    buildCommand: |
+      rm -rf .next
+      rm -rf node_modules/.cache
+      npm ci
+      npx prisma generate
+      npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 3000
+      - key: NEXT_TELEMETRY_DISABLED
+        value: 1
       - key: DATABASE_URL
         sync: false
       - key: DIRECT_URL
@@ -24,9 +33,15 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_KEY
         sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
       - key: CRON_SECRET
         sync: false
       - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: IPSTACK_KEY
+        sync: false
+      - key: RESEND_API_KEY
         sync: false
 
   - type: cron
