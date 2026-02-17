@@ -8,6 +8,9 @@ datasource db {
   provider = "postgresql"
   url = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+  
+  // Required for Supabase connection pooler
+ 影子 = ""
 }
 
 model Avocat {
