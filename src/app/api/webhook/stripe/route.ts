@@ -25,6 +25,13 @@ export async function POST(request: NextRequest) {
           statut: 'PAYE'
         }
       })
+      
+      // Déclencher l'analyse IA après paiement réussi
+      fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/analyse/dossier`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dossierId })
+      }).catch(err => console.error('Analyse trigger error:', err))
     }
     
     return NextResponse.json({ received: true })

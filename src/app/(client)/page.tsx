@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { useRouter } from 'next/navigation'
 import { Loader2, Scale, Brain, Shield } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 export default function LandingPage() {
   const router = useRouter()
   const [pays, setPays] = useState<Pays | null>(null)
