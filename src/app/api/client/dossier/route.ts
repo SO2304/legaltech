@@ -7,11 +7,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, nom, prenom, telephone, pays: paysClient, dateMariage, nombreEnfants, typeProcedure, avocatId } = body
 
-    if (!email || !nom || !prenom || !avocatId) {
+    if (!email || !nom || !prenom) {
       return NextResponse.json(
-        { error: 'Paramètres manquants: email, nom, prenom, avocatId requis' },
+        { error: 'Paramètres manquants: email, nom, prenom requis' },
         { status: 400 }
       )
+    }
+
+    // Find or create default avocat if not provided
+    let assignedAvocatId = avocatId
+    if (!assignedAvocatId) {
+      const defaultAvocat = await prisma.avocat.findFirst({
+        orderBy: { createdAt: 'asc' }
+      })
+      if (!defaultAvocat) {
+        return NextResponse.json(
+          { error: 'Aucun avocat disponible. Veuillez réessayer plus tard.' },
+          { status: 500 }
+        )
+      }
+      assignedAvocatId = defaultAvocat.id
     }
 
     // Find or create client
@@ -34,7 +49,7 @@ export async function POST(request: NextRequest) {
     const dossier = await prisma.dossier.create({
       data: {
         reference: `DIV-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`,
-        avocatId,
+        avocatId: assignedAvocatId,
         clientId: client.id,
         pays: paysClient || Pays.FRANCE,
         typeProcedure: typeProcedure || 'divorce',
