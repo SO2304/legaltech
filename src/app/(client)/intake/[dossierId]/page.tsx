@@ -39,6 +39,7 @@ export default function IntakePage({ params }: { params: Promise<{ dossierId: st
   const [step, setStep] = useState<Step>('info')
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState<string | null>(null)
+  const [avocatId, setAvocatId] = useState<string | null>(null)
   const [dossierId, setDossierId] = useState<string | null>(null)
   const [dossierRef, setDossierRef] = useState<string | null>(null)
   const [uploadedDocs, setUploadedDocs] = useState<Record<string, { name: string; status: 'uploading' | 'ok' | 'error' }>>({})
@@ -58,6 +59,23 @@ export default function IntakePage({ params }: { params: Promise<{ dossierId: st
   const canContinue = info.prenom && info.nom && info.email
   const requiredDone = DOCUMENT_TYPES.filter(d => d.exige).every(d => uploadedDocs[d.type]?.status === 'ok')
 
+  // Fetch available avocat on mount
+  useEffect(() => {
+    const fetchAvocat = async () => {
+      try {
+        // Get first available avocat from API
+        const res = await fetch('/api/client/dossier?action=getAvocat')
+        const data = await res.json()
+        if (data.avocatId) {
+          setAvocatId(data.avocatId)
+        }
+      } catch (error) {
+        console.error('Error fetching avocat:', error)
+      }
+    }
+    fetchAvocat()
+  }, [])
+
   const handleCreateDossier = async () => {
     setLoading(true)
     try {
@@ -70,7 +88,7 @@ export default function IntakePage({ params }: { params: Promise<{ dossierId: st
           dateMariage: situation.dateMariage,
           nombreEnfants: parseInt(situation.nombreEnfants),
           typeProcedure: situation.typeProcedure,
-          avocatId: 'demo-avocat',
+          avocatId: avocatId,
         })
       })
       const data = await res.json()
