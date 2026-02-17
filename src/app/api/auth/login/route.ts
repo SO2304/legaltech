@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-// Simple password hashing (in production, use bcrypt)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(password)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-}
+import bcrypt from 'bcrypt'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,20 +13,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const passwordHash = await hashPassword(password)
-
     const avocat = await prisma.avocat.findFirst({
       where: { 
         email,
-        passwordHash,
         isActive: true
-      },
-      select: {
-        id: true,
-        email: true,
-        nom: true,
-        prenom: true,
-        cabinet: true
       }
     })
 
@@ -45,7 +27,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // In production, set secure HTTP-only cookie
+    // Verify password with bcrypt
+    const isValidPassword = await bcrypt.compare(password, avocat.passwordHash)
+    
+    if (!isValidPassword) {
+      return NextResponse.json(
+        { error: 'Email ou mot de passe incorrect' },
+        { status: 401 }
+      )
+    }
+
     return NextResponse.json({
       success: true,
       avocat: {

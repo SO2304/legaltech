@@ -2,9 +2,127 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, CreditCard, Lock, CheckCircle } from 'lucide-react'
+
+// Initialize Stripe with publishable key
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '')
+
+function PaymentForm({ 
+  clientSecret, 
+  dossierId, 
+  dossier 
+}: { 
+  clientSecret: string
+  dossierId: string
+  dossier: { id: string; reference: string; montantTTC: number; fraisGestion: number }
+}) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const router = useRouter()
+  const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const total = (dossier.montantTTC || 149) + (dossier.fraisGestion || 30)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!stripe || !elements) {
+      return
+    }
+
+    setProcessing(true)
+    setError(null)
+
+    const { error: submitError } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/confirmation?dossierId=${dossierId}`,
+      },
+    })
+
+    if (submitError) {
+      setError(submitError.message || 'Erreur de paiement')
+      setProcessing(false)
+    }
+    // Stripe will redirect on success
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <CardContent className="space-y-6">
+        <div className="space-y-2 border-b pb-4">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Analyse juridique IA</span>
+            <span>{dossier.montantTTC || 149}€</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Frais de gestion</span>
+            <span>{dossier.fraisGestion || 30}€</span>
+          </div>
+          <div className="flex justify-between font-bold text-lg pt-2 border-t">
+            <span>Total TTC</span>
+            <span>{total}€</span>
+          </div>
+        </div>
+
+        {/* Stripe Payment Element */}
+        <div className="space-y-4">
+          <label className="text-sm font-medium">Détails du paiement</label>
+          <PaymentElement 
+            options={{
+              layout: 'tabs'
+            }}
+          />
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+            <div>
+              <p className="font-medium text-green-800">Paiement 100% sécurisé</p>
+              <p className="text-sm text-green-700">
+                Vos données sont cryptées via Stripe. Nous ne stockons pas vos informations de paiement.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <Button 
+          type="submit"
+          className="w-full h-12 text-lg" 
+          disabled={!stripe || processing}
+        >
+          {processing ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              Traitement en cours...
+            </>
+          ) : (
+            <>
+              <Lock className="w-5 h-5 mr-2" />
+              Payer {total}€
+            </>
+          )}
+        </Button>
+
+        <p className="text-xs text-center text-muted-foreground">
+          En cliquant sur "Payer", vous acceptez nos Conditions Générales d'Utilisation
+        </p>
+      </CardContent>
+    </form>
+  )
+}
 
 function PaymentContent() {
   const router = useRouter()
@@ -12,7 +130,6 @@ function PaymentContent() {
   const dossierId = searchParams.get('dossierId')
   
   const [loading, setLoading] = useState(true)
-  const [processing, setProcessing] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [dossier, setDossier] = useState<{
     id: string
@@ -60,14 +177,6 @@ function PaymentContent() {
     initPayment()
   }, [dossierId])
 
-  const handlePayment = async () => {
-    setProcessing(true)
-    // Simulate payment success (in production, use Stripe Elements)
-    setTimeout(() => {
-      router.push(`/confirmation?dossierId=${dossierId}`)
-    }, 1500)
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -91,7 +200,13 @@ function PaymentContent() {
     )
   }
 
-  const total = (dossier?.montantTTC || 149) + (dossier?.fraisGestion || 30)
+  if (!clientSecret || !dossier) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Données de paiement manquantes</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -112,59 +227,27 @@ function PaymentContent() {
                 Paiement sécurisé
               </CardTitle>
               <CardDescription>
-                Référence dossier: {dossier?.reference}
+                Référence dossier: {dossier.reference}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2 border-b pb-4">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Analyse juridique IA</span>
-                  <span>{dossier?.montantTTC || 149}€</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Frais de gestion</span>
-                  <span>{dossier?.fraisGestion || 30}€</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                  <span>Total TTC</span>
-                  <span>{total}€</span>
-                </div>
-              </div>
-
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-green-800">Paiement 100% sécurisé</p>
-                    <p className="text-sm text-green-700">
-                      Vos données sont cryptées via Stripe. Nous ne stockons pas vos informations de paiement.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <Button 
-                className="w-full h-12 text-lg" 
-                onClick={handlePayment}
-                disabled={processing}
-              >
-                {processing ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    Traitement en cours...
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-5 h-5 mr-2" />
-                    Payer {total}€
-                  </>
-                )}
-              </Button>
-
-              <p className="text-xs text-center text-muted-foreground">
-                En cliquant sur "Payer", vous acceptez nos Conditions Générales d'Utilisation
-              </p>
-            </CardContent>
+            <Elements 
+              stripe={stripePromise} 
+              options={{
+                clientSecret,
+                appearance: {
+                  theme: 'stripe',
+                  variables: {
+                    colorPrimary: '#0f172a',
+                  }
+                }
+              }}
+            >
+              <PaymentForm 
+                clientSecret={clientSecret} 
+                dossierId={dossierId!} 
+                dossier={dossier} 
+              />
+            </Elements>
           </Card>
         </div>
       </main>

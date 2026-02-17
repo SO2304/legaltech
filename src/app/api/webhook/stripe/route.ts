@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe-service'
 import { prisma } from '@/lib/prisma'
+import { DossierStatus } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
         data: {
           stripePaid: true,
           stripePaidAt: new Date(),
-          statut: 'PAYE'
+          statut: DossierStatus.PAYE
         }
       })
       

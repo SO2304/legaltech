@@ -1,9 +1,13 @@
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcrypt'
 
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('🌱 Creating test lawyer account...')
+
+  // Hash password with bcrypt
+  const passwordHash = await bcrypt.hash('password', 10)
 
   // Create test lawyer
   const avocat = await prisma.avocat.upsert({
@@ -11,7 +15,7 @@ async function main() {
     update: {},
     create: {
       email: 'test@avocat.fr',
-      passwordHash: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', // SHA256 of "password"
+      passwordHash: passwordHash,
       nom: 'Dupont',
       prenom: 'Jean',
       cabinet: 'Cabinet Dupont & Associés',

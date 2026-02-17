@@ -90,17 +90,42 @@ const documentTypeLabels: Record<DocumentType, string> = {
   AUTRE: 'Autre document'
 }
 
-// Mock financial data for demo
+// Mock data for fallback
 const mockDataItems: DataItem[] = [
   { id: '1', categorie: 'revenu', label: 'Salaire net mensuel', valeur: 2800, documentId: '3', articleLoi: 'Art. 270 Code Civil FR - Prestation compensatoire' },
   { id: '2', categorie: 'revenu', label: 'Prime annuelle', valeur: 5000, documentId: '3' },
   { id: '3', categorie: 'charge', label: 'Loyer mensuel', valeur: 1200, documentId: '3' },
   { id: '4', categorie: 'charge', label: 'Crédit voiture', valeur: 350, documentId: '3' },
   { id: '5', categorie: 'charge', label: 'Cantine enfants', valeur: 250, documentId: '3' },
-  { id: '6', categorie: 'patrimoine', label: 'Appartement', valeur: 350000, documentId: '3', articleLoi: 'Art. 1387 Code Civil FR - Communauté réduite aux acquêts' },
-  { id: '7', categorie: 'patrimoine', label: 'Voiture', valeur: 25000, documentId: '3' },
-  { id: '8', categorie: 'patrimoine', label: 'Livret A', valeur: 15000, documentId: '3' },
+  { id: '6', categorie: 'patrimoine', label: 'Appartement', valeur: 350000, documentId: '3', articleLoi: 'Art. 1387 Code Civil FR - Communauté réduite aux acquêts' }
 ]
+
+const mockDossier: DossierDetail = {
+  id: '',
+  reference: 'DIV-2024-001',
+  statut: DossierStatus.PAYE,
+  pays: 'FRANCE',
+  typeProcedure: 'divorce',
+  dateMariage: '2015-06-15',
+  nombreEnfants: 2,
+  montantTTC: 149,
+  fraisGestion: 30,
+  stripePaid: true,
+  stripePaidAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+  analyseIA: null,
+  syntheseHTML: null,
+  sourcesLegales: null,
+  createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+  client: {
+    id: '1',
+    email: 'marie.martin@email.fr',
+    nom: 'Martin',
+    prenom: 'Marie',
+    telephone: '+33 6 12 34 56 78',
+    pays: 'FRANCE'
+  },
+  documents: []
+}
 
 export default function DossierDetailPage() {
   const params = useParams()
@@ -108,6 +133,7 @@ export default function DossierDetailPage() {
   const [loading, setLoading] = useState(true)
   const [analysing, setAnalysing] = useState(false)
   const [dossier, setDossier] = useState<DossierDetail | null>(null)
+  const [dataItems, setDataItems] = useState<DataItem[]>([])
   const [selectedDocumentIndex, setSelectedDocumentIndex] = useState(0)
   const [selectedDataItem, setSelectedDataItem] = useState<DataItem | null>(null)
   
@@ -117,70 +143,47 @@ export default function DossierDetailPage() {
     : null
 
   useEffect(() => {
-    // Mock dossier detail for demo
-    const mockDossier: DossierDetail = {
-      id: params.id as string,
-      reference: 'DIV-2024-001',
-      statut: DossierStatus.PAYE,
-      pays: 'FRANCE',
-      typeProcedure: 'divorce',
-      dateMariage: '2015-06-15',
-      nombreEnfants: 2,
-      montantTTC: 149,
-      fraisGestion: 30,
-      stripePaid: true,
-      stripePaidAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      analyseIA: null,
-      syntheseHTML: null,
-      sourcesLegales: null,
-      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      client: {
-        id: '1',
-        email: 'marie.martin@email.fr',
-        nom: 'Martin',
-        prenom: 'Marie',
-        telephone: '+33 6 12 34 56 78',
-        pays: 'FRANCE'
-      },
-      documents: [
-        {
-          id: '1',
-          type: DocumentType.CARTE_IDENTITE,
-          nomOriginal: 'carte_identite.jpg',
-          mimeType: 'image/jpeg',
-          taille: 245000,
-          texteExtrait: 'MARTIN Marie, née le 15/03/1985 à Paris',
-          exigeLegal: true,
-          estValide: true,
-          cheminStorage: '/documents/carte_identite.jpg'
-        },
-        {
-          id: '2',
-          type: DocumentType.ACTE_MARIAGE,
-          nomOriginal: 'acte_mariage.pdf',
-          mimeType: 'application/pdf',
-          taille: 125000,
-          texteExtrait: 'Mariage célébré le 15/06/2015 à la mairie du 10ème arrondissement de Paris',
-          exigeLegal: true,
-          estValide: true,
-          cheminStorage: '/documents/acte_mariage.pdf'
-        },
-        {
-          id: '3',
-          type: DocumentType.BULLETIN_SALAIRE,
-          nomOriginal: 'bulletin_salaire_01.pdf',
-          mimeType: 'application/pdf',
-          taille: 98000,
-          texteExtrait: 'MARTIN Marie - Salaire net: 2800€',
-          exigeLegal: false,
-          estValide: true,
-          cheminStorage: '/documents/bulletin_salaire.pdf'
+    const fetchDossier = async () => {
+      try {
+        const response = await fetch(`/api/avocat/dossiers?id=${params.id}`)
+        const data = await response.json()
+        
+        if (data.dossier) {
+          setDossier(data.dossier)
+          
+          // Extract financial data from documents
+          const extractedData: DataItem[] = []
+          data.dossier.documents?.forEach((doc: Document) => {
+            if (doc.texteExtrait) {
+              // Try to extract salary info
+              const salaryMatch = doc.texteExtrait.match(/(\d{3,5})\s*[€€]/)
+              if (salaryMatch && doc.type === 'BULLETIN_SALAIRE') {
+                extractedData.push({
+                  id: doc.id,
+                  categorie: 'revenu' as const,
+                  label: 'Salaire net',
+                  valeur: parseInt(salaryMatch[1].replace(/\s/g, '')),
+                  documentId: doc.id
+                })
+              }
+            }
+          })
+          setDataItems(extractedData)
+        } else {
+          // Fallback to mock data if no dossier found
+          setDossier(mockDossier)
+          setDataItems(mockDataItems)
         }
-      ]
+      } catch (err) {
+        console.error('Error fetching dossier:', err)
+        setDossier(mockDossier)
+        setDataItems(mockDataItems)
+      } finally {
+        setLoading(false)
+      }
     }
-
-    setDossier(mockDossier)
-    setLoading(false)
+    
+    fetchDossier()
   }, [params.id])
 
   const handleDataClick = (item: DataItem) => {

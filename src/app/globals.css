@@ -1,29 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
+    /* Serenity Flow Palette */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 215 40% 14%; /* Navy #011627 converted */
+    
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 40% 14%;
+    
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --popover-foreground: 215 40% 14%;
+    
+    /* Navy #011627 as primary */
+    --primary: 215 55% 7%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Gold #C5A059 as secondary */
+    --secondary: 38 46% 58%;
+    --secondary-foreground: 215 55% 7%;
+    
+    --muted: 60 7% 96%;
+    --muted-foreground: 215 20% 45%;
+    
+    --accent: 38 46% 58%;
+    --accent-foreground: 215 55% 7%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 60 7% 90%;
+    --input: 60 7% 90%;
+    --ring: 215 55% 7%;
+    
+    --radius: 0.75rem;
   }
 }
 
@@ -31,7 +45,83 @@
   * {
     @apply border-border;
   }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
   }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+/* Custom scrollbar for premium feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F5F5F0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C5A059;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a88647;
+}
+
+/* Paper effect utility */
+.paper-shadow {
+  box-shadow: 0 2px 8px rgba(1, 22, 39, 0.08);
+}
+
+.paper-shadow-lg {
+  box-shadow: 0 8px 24px rgba(1, 22, 39, 0.12);
+}
+
+/* Gold accent glow */
+.gold-glow {
+  box-shadow: 0 0 20px rgba(197, 160, 89, 0.3);
+}
+
+/* Smooth transitions */
+.transition-serenity {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* AI Scan animation */
+@keyframes scan-line {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.scan-animation::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #C5A059, transparent);
+  animation: scan-line 1.5s ease-in-out infinite;
+}
+
+/* Progress bar animation */
+.progress-gold {
+  background: linear-gradient(90deg, #C5A059, #d4b06a);
 }
