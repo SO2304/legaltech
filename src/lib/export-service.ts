@@ -29,7 +29,7 @@ export interface ExportData {
     email: string
     telephone: string | null
     pays: string
-    dateNaissance: Date | null
+    dateBirth: Date | null
     adresse: string | null
     ville: string | null
   }
@@ -117,7 +117,7 @@ export async function getDossierForExport(dossierId: string, avocatId: string): 
       email: dossier.client.email,
       telephone: dossier.client.telephone,
       pays: dossier.client.pays,
-      dateNaissance: dossier.client.datenaissance,
+      dateBirth: dossier.client.dateBirth,
       adresse: dossier.client.adresse,
       ville: dossier.client.ville
     },
@@ -171,7 +171,7 @@ export function generateRecapitulatifText(data: ExportData): string {
     `Nom: ${data.client.prenom} ${data.client.nom}`,
     `Email: ${data.client.email}`,
     `Téléphone: ${data.client.telephone || 'Non spécifié'}`,
-    `Date de naissance: ${formatDate(data.client.dateNaissance)}`,
+    `Date de naissance: ${formatDate(data.client.dateBirth)}`,
     `Adresse: ${data.client.adresse || 'Non spécifiée'}`,
     `Ville: ${data.client.ville || 'Non spécifiée'}`,
     '',
