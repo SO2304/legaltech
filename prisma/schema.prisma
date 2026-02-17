@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+  binaryTargets = ["native", "windows", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Avocat {
+  id String @id @default(cuid())
+  email String @unique
+  passwordHash String
+  nom String
+  prenom String
+  cabinet String?
+  pays Pays @default(FRANCE)
+  barreau String?
+  numeroInscription String?
+  telephone String?
+  adresse String?
+  ville String?
+  stripeAccountId String? @unique
+  stripeOnboarded Boolean @default(false)
+  totpSecret String?
+  emailVerified DateTime?
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  dossiers Dossier[]
+  @@index([email])
+  @@index([pays])
+  @@map("avocats")
+}
+
+model Client {
+  id String @id @default(cuid())
+  email String
+  nom String
+  prenom String
+  telephone String?
+  pays Pays @default(FRANCE)
+  paysDetecte Pays?
+  ipAddress String?
+  dateNaissance DateTime?
+  adresse String?
+  ville String?
+  createdAt DateTime @default(now())
+  dossiers Dossier[]
+  @@index([email])
+  @@index([pays])
+  @@map("clients")
+}
+
+model Dossier {
+  id String @id @default(cuid())
+  reference String @unique @default(cuid())
+  avocatId String
+  avocat Avocat @relation(fields: [avocatId], references: [id], onDelete: Cascade)
+  clientId String
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  statut DossierStatus @default(BROUILLON)
+  pays Pays @default(FRANCE)
+  typeProcedure String?
+  dateMariage DateTime?
+  nombreEnfants Int @default(0)
+  analyseIA String? @db.Text
+  syntheseHTML String? @db.Text
+  sourcesLegales String? @db.Text
+  montantTTC Float @default(149.00)
+  fraisGestion Float @default(30.00)
+  stripePaymentIntent String? @unique
+  stripePaid Boolean @default(false)
+  stripePaidAt DateTime?
+  datePurge DateTime?
+  isPurged Boolean @default(false)
+  purgedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  documents Document[]
+  @@index([avocatId])
+  @@index([statut])
+  @@index([stripePaid])
+  @@map("dossiers")
+}
+
+model Document {
+  id String @id @default(cuid())
+  dossierId String
+  dossier Dossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+  type DocumentType
+  nomOriginal String
+  nomStockage String @unique
+  mimeType String
+  taille Int
+  cheminStorage String
+  texteExtrait String? @db.Text
+  donneesExtraites String? @db.Text
+  qualiteImage String?
+  exigeLegal Boolean @default(false)
+  articleLoi String?
+  estValide Boolean @default(false)
+  datePurge DateTime
+  isPurged Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@index([dossierId])
+  @@index([type])
+  @@map("documents")
+}
+
+model TexteLoi {
+  id String @id @default(cuid())
+  pays Pays
+  code CodeLegal
+  article String
+  titre String
+  contenu String @db.Text
+  embedding String? @db.Text
+  dateVigueur DateTime?
+  estActif Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([pays, code, article])
+  @@index([pays, code])
+  @@map("textes_lois")
+}
+
+enum Pays {
+  FRANCE
+  BELGIQUE
+  SUISSE
+  LUXEMBOURG
+}
+
+enum DossierStatus {
+  BROUILLON
+  EN_ATTENTE_PAIEMENT
+  PAYE
+  EN_ANALYSE
+  ANALYSE_TERMINEE
+  VALIDE
+  PURGE
+}
+
+enum DocumentType {
+  CARTE_IDENTITE
+  ACTE_MARIAGE
+  BULLETIN_SALAIRE
+  AVIS_IMPOSITION
+  RELEVE_BANCAIRE
+  TITRE_PROPRIETE
+  AUTRE
+}
+
+enum CodeLegal {
+  CODE_CIVIL
+  CODE_PROCEDURE_CIVILE
+  CODE_FAMILLE
+}
