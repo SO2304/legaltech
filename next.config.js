@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  outputFileTracingRoot: 'C:/Users/user/Documents',
   images: {
     remotePatterns: [],
   },
