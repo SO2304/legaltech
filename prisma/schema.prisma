@@ -64,6 +64,7 @@ model Dossier {
   clientId String
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
   lienId String? // Lien utilisé pour créer ce dossier
+  lien Lien? @relation(fields: [lienId], references: [id], onDelete: SetNull)
   domaine String? // Domaine juridique (DIVORCE, PENAL, etc.)
   statut DossierStatus @default(BROUILLON)
   pays Pays @default(FRANCE)
