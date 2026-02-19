@@ -31,6 +31,7 @@ model Avocat {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   dossiers Dossier[]
+  liens Lien[]
   @@index([email])
   @@index([pays])
   @@map("avocats")
@@ -62,6 +63,8 @@ model Dossier {
   avocat Avocat @relation(fields: [avocatId], references: [id], onDelete: Cascade)
   clientId String
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lienId String? // Lien utilisé pour créer ce dossier
+  domaine String? // Domaine juridique (DIVORCE, PENAL, etc.)
   statut DossierStatus @default(BROUILLON)
   pays Pays @default(FRANCE)
   typeProcedure String?
@@ -75,6 +78,8 @@ model Dossier {
   stripePaymentIntent String? @unique
   stripePaid Boolean @default(false)
   stripePaidAt DateTime?
+  zipEnvoye Boolean @default(false)
+  zipEnvoyeAt DateTime?
   datePurge DateTime?
   isPurged Boolean @default(false)
   purgedAt DateTime?
@@ -84,6 +89,7 @@ model Dossier {
   @@index([avocatId])
   @@index([statut])
   @@index([stripePaid])
+  @@index([lienId])
   @@map("dossiers")
 }
 
@@ -159,4 +165,20 @@ enum CodeLegal {
   CODE_CIVIL
   CODE_PROCEDURE_CIVILE
   CODE_FAMILLE
+}
+
+model Lien {
+  id String @id @default(cuid())
+  token String @unique
+  avocatId String
+  avocat Avocat @relation(fields: [avocatId], references: [id], onDelete: Cascade)
+  domaine String? // Domaine pré-sélectionné (optionnel)
+  label String? // Label optionnel du lien
+  clics Int @default(0)
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+  dossiers Dossier[]
+  @@index([avocatId])
+  @@index([token])
+  @@map("liens")
 }

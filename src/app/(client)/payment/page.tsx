@@ -6,7 +6,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, CreditCard, Lock, CheckCircle } from 'lucide-react'
+import { Loader2, CreditCard, Lock, CheckCircle, ArrowLeft, Scale } from 'lucide-react'
 
 // Initialize Stripe with publishable key
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '')
@@ -49,7 +49,6 @@ function PaymentForm({
       setError(submitError.message || 'Erreur de paiement')
       setProcessing(false)
     }
-    // Stripe will redirect on success
   }
 
   return (
@@ -57,22 +56,22 @@ function PaymentForm({
       <CardContent className="space-y-6">
         <div className="space-y-2 border-b pb-4">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Analyse juridique IA</span>
-            <span>{dossier.montantTTC || 149}€</span>
+            <span className="text-navy/60">Analyse juridique IA</span>
+            <span className="text-navy">{dossier.montantTTC || 149}€</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Frais de gestion</span>
-            <span>{dossier.fraisGestion || 30}€</span>
+            <span className="text-navy/60">Frais de gestion</span>
+            <span className="text-navy">{dossier.fraisGestion || 30}€</span>
           </div>
           <div className="flex justify-between font-bold text-lg pt-2 border-t">
-            <span>Total TTC</span>
-            <span>{total}€</span>
+            <span className="text-navy">Total TTC</span>
+            <span className="text-navy">{total}€</span>
           </div>
         </div>
 
         {/* Stripe Payment Element */}
         <div className="space-y-4">
-          <label className="text-sm font-medium">Détails du paiement</label>
+          <label className="text-sm font-medium text-navy">Détails du paiement</label>
           <PaymentElement 
             options={{
               layout: 'tabs'
@@ -81,12 +80,12 @@ function PaymentForm({
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <div className="bg-red-50 border border-red-100 rounded-lg p-3">
             <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
 
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        <div className="bg-green-50 border border-green-100 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
             <div>
@@ -100,6 +99,7 @@ function PaymentForm({
 
         <Button 
           type="submit"
+          variant="gold"
           className="w-full h-12 text-lg" 
           disabled={!stripe || processing}
         >
@@ -111,13 +111,13 @@ function PaymentForm({
           ) : (
             <>
               <Lock className="w-5 h-5 mr-2" />
-              Payer {total}€
+              Payer {total}€ en sécurité
             </>
           )}
         </Button>
 
-        <p className="text-xs text-center text-muted-foreground">
-          En cliquant sur "Payer", vous acceptez nos Conditions Générales d'Utilisation
+        <p className="text-xs text-center text-navy/40">
+          Paiement sécurisé par Stripe · Vos données bancaires ne nous sont jamais transmises
         </p>
       </CardContent>
     </form>
@@ -146,7 +146,6 @@ function PaymentContent() {
       return
     }
 
-    // Fetch dossier info and create payment intent
     const initPayment = async () => {
       try {
         const response = await fetch('/api/payment/create', {
@@ -160,9 +159,9 @@ function PaymentContent() {
           setClientSecret(data.clientSecret)
           setDossier({
             id: dossierId,
-            reference: `DIV-${dossierId.slice(0, 8)}`,
-            montantTTC: 149,
-            fraisGestion: 30
+            reference: data.dossier?.reference || `DIV-${dossierId.slice(0, 8)}`,
+            montantTTC: data.dossier?.montantTTC || 149,
+            fraisGestion: data.dossier?.fraisGestion || 30
           })
         } else {
           setError(data.error || 'Erreur de paiement')
@@ -179,19 +178,19 @@ function PaymentContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-pearl flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-navy" />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <p className="text-red-500 text-center">{error}</p>
-            <Button className="w-full mt-4" onClick={() => router.push('/')}>
+      <div className="min-h-screen bg-pearl flex items-center justify-center p-6">
+        <Card className="max-w-md w-full shadow-paper-xl">
+          <CardContent className="pt-6 text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={() => router.push('/')}>
               Retour à l'accueil
             </Button>
           </CardContent>
@@ -202,32 +201,45 @@ function PaymentContent() {
 
   if (!clientSecret || !dossier) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Données de paiement manquantes</p>
+      <div className="min-h-screen bg-pearl flex items-center justify-center">
+        <p className="text-navy/60">Données de paiement manquantes</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-xl">Divorce Platform</span>
+    <div className="min-h-screen bg-pearl">
+      {/* Header with back button */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-pearl-300 sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => router.back()}
+              className="hover:bg-pearl"
+            >
+              <ArrowLeft className="w-5 h-5 text-navy" />
+            </Button>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-navy rounded-lg flex items-center justify-center">
+                <Scale className="w-4 h-4 text-gold" />
+              </div>
+              <span className="font-serif font-bold text-lg text-navy">Lexia</span>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-12">
-        <div className="max-w-lg mx-auto">
-          <Card>
+        <div className="max-w-md mx-auto">
+          <Card className="shadow-paper-xl">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5" />
-                Paiement sécurisé
+              <CardTitle className="font-serif text-navy text-xl">
+                Finaliser votre dossier
               </CardTitle>
-              <CardDescription>
-                Référence dossier: {dossier.reference}
+              <CardDescription className="text-navy/60">
+                Référence : <span className="font-mono font-bold">{dossier.reference}</span>
               </CardDescription>
             </CardHeader>
             <Elements 
@@ -237,7 +249,9 @@ function PaymentContent() {
                 appearance: {
                   theme: 'stripe',
                   variables: {
-                    colorPrimary: '#0f172a',
+                    colorPrimary: '#011627',
+                    colorText: '#011627',
+                    colorBackground: '#ffffff',
                   }
                 }
               }}
@@ -258,8 +272,8 @@ function PaymentContent() {
 export default function PaymentPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-pearl flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-navy" />
       </div>
     }>
       <PaymentContent />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, use, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,75 +9,99 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Progress } from '@/components/ui/progress'
-import { Loader2, FileText, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Scale, Upload, Shield, ExternalLink, Sparkles } from 'lucide-react'
-import { DocumentType, Pays } from '@prisma/client'
+import { Loader2, FileText, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Scale, Upload, Shield, ExternalLink, Sparkles, CheckCircle2 } from 'lucide-react'
+import { Pays } from '@prisma/client'
+import { DOMAINS, getDomainById, DomainConfig, ChampSituation, DocumentConfig } from '@/lib/domains'
 
-type Step = 'info' | 'situation' | 'documents'
+type Step = 'domaine' | 'info' | 'situation' | 'documents'
 
-// Document links for "Zéro Recherche" UX feature
-const DOCUMENT_LINKS: Record<string, { label: string; url: string }> = {
-  CARTE_IDENTITE: { label: 'Préfecture', url: 'https://www.service-public.fr/particuliers/vosdroits/N149' },
-  ACTE_MARIAGE: { label: 'Mairie', url: 'https://www.service-public.fr/particuliers/vosdroits/N121' },
-  BULLETIN_SALAIRE: { label: 'Espace RH', url: 'https://www.service-public.fr/particuliers/vosdroits/R2459' },
-  AVIS_IMPOSITION: { label: 'Impots.gouv', url: 'https://www.impots.gouv.fr/particulier' },
-  RELEVE_BANCAIRE: { label: 'Banque en ligne', url: '#' },
-  TITRE_PROPRIETE: { label: 'Cadastre', url: 'https://www.cadastre.gouv.fr' },
-}
-
-const DOCUMENT_TYPES = [
-  { type: DocumentType.CARTE_IDENTITE, label: "Carte d'identité ou Passeport", exige: true },
-  { type: DocumentType.ACTE_MARIAGE, label: 'Acte de mariage', exige: true },
-  { type: DocumentType.BULLETIN_SALAIRE, label: 'Bulletins de salaire (3 derniers mois)', exige: false },
-  { type: DocumentType.AVIS_IMPOSITION, label: "Avis d'imposition", exige: false },
-  { type: DocumentType.RELEVE_BANCAIRE, label: 'Relevés bancaires (6 derniers mois)', exige: false },
-  { type: DocumentType.TITRE_PROPRIETE, label: 'Titre de propriété', exige: false },
-]
+// Ordre des étapes
+const STEP_ORDER: Step[] = ['domaine', 'info', 'situation', 'documents']
 
 export default function IntakePage({ params }: { params: Promise<{ dossierId: string }> }) {
-  use(params)
+  const { dossierId } = use(params)
   const router = useRouter()
-  const [step, setStep] = useState<Step>('info')
+  
+  // États
+  const [step, setStep] = useState<Step>('domaine')
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  
+  // Données session
   const [avocatId, setAvocatId] = useState<string | null>(null)
-  const [dossierId, setDossierId] = useState<string | null>(null)
+  const [avocatNom, setAvocatNom] = useState<string>('')
+  const [selectedDomainId, setSelectedDomainId] = useState<string | null>(null)
+  const [linkToken, setLinkToken] = useState<string>('')
+  
+  // Données formulaire
+  const [dossierIdDb, setDossierIdDb] = useState<string | null>(null)
   const [dossierRef, setDossierRef] = useState<string | null>(null)
   const [datePurge, setDatePurge] = useState<Date | null>(null)
+  const [zipSent, setZipSent] = useState(false)
   const [uploadedDocs, setUploadedDocs] = useState<Record<string, { name: string; status: 'uploading' | 'ok' | 'error' }>>({})
 
   const [info, setInfo] = useState({ prenom: '', nom: '', email: '', telephone: '' })
-  const [situation, setSituation] = useState({
-    pays: 'FRANCE',
-    dateMariage: '',
-    nombreEnfants: '0',
-    typeProcedure: 'divorce_consentement_mutuel',
-    regimeMatrimonial: 'communaute_legale',
-    bienImmobilier: 'non',
-    accordAmiable: 'oui',
-  })
+  const [situation, setSituation] = useState<Record<string, string>>({})
 
-  const progress = step === 'info' ? 33 : step === 'situation' ? 66 : 100
-  const canContinue = info.prenom && info.nom && info.email
-  const requiredDone = DOCUMENT_TYPES.filter(d => d.exige).every(d => uploadedDocs[d.type]?.status === 'ok')
-
-  // Fetch available avocat on mount
+  // Computed
+  const domain = selectedDomainId ? getDomainById(selectedDomainId) : null
+  
+  // Guard de session - bloquer si pas d'accès
   useEffect(() => {
-    const fetchAvocat = async () => {
-      try {
-        // Get first available avocat from API
-        const res = await fetch('/api/client/dossier?action=getAvocat')
-        const data = await res.json()
-        if (data.avocatId) {
-          setAvocatId(data.avocatId)
-        }
-      } catch (error) {
-        console.error('Error fetching avocat:', error)
-      }
+    const storedAvocatId = sessionStorage.getItem('avocatId')
+    const storedAvocatNom = sessionStorage.getItem('avocatNom') || ''
+    const storedDomaine = sessionStorage.getItem('domaine')
+    const storedToken = sessionStorage.getItem('linkToken') || ''
+
+    if (!storedAvocatId) {
+      setError('Accès restreint')
+      return
     }
-    fetchAvocat()
+
+    setAvocatId(storedAvocatId)
+    setAvocatNom(storedAvocatNom)
+    setLinkToken(storedToken)
+
+    // Si domaine prédéfini, skip étape domaine
+    if (storedDomaine) {
+      setSelectedDomainId(storedDomaine)
+      setStep('info')
+    }
   }, [])
 
+  // Déterminer les étapes visibles
+  const visibleSteps = selectedDomainId 
+    ? STEP_ORDER.filter(s => s !== 'domaine')
+    : STEP_ORDER
+  
+  const currentStepIndex = visibleSteps.indexOf(step)
+  const progress = ((currentStepIndex + 1) / visibleSteps.length) * 100
+
+  // Validation
+  const canContinueInfo = info.prenom && info.nom && info.email
+  const canContinueSituation = domain?.champs.every(c => !c.required || situation[c.id]) || false
+  const requiredDocs = domain?.documents.filter(d => d.exige) || []
+  const requiredDone = requiredDocs.every(d => uploadedDocs[d.type]?.status === 'ok')
+
+  // Handlers
+  const goNext = () => {
+    const currentIndex = visibleSteps.indexOf(step)
+    if (currentIndex < visibleSteps.length - 1) {
+      setStep(visibleSteps[currentIndex + 1])
+    }
+  }
+
+  const goBack = () => {
+    const currentIndex = visibleSteps.indexOf(step)
+    if (currentIndex > 0) {
+      setStep(visibleSteps[currentIndex - 1])
+    }
+  }
+
   const handleCreateDossier = async () => {
+    if (!avocatId || !domain) return
+    
     setLoading(true)
     try {
       const res = await fetch('/api/client/dossier', {
@@ -85,18 +109,21 @@ export default function IntakePage({ params }: { params: Promise<{ dossierId: st
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...info,
-          pays: situation.pays as Pays,
-          dateMariage: situation.dateMariage,
-          nombreEnfants: parseInt(situation.nombreEnfants),
-          typeProcedure: situation.typeProcedure,
+          pays: (situation.pays as Pays) || 'FRANCE',
+          domaine: domain.id,
+          situationJSON: JSON.stringify(situation),
           avocatId: avocatId,
+          linkToken: linkToken,
+          // Champs additionnels selon domaine
+          dateMariage: situation.dateMariage,
+          nombreEnfants: situation.nombreEnfants ? parseInt(situation.nombreEnfants) : 0,
+          typeProcedure: situation.typeProcedure,
         })
       })
       const data = await res.json()
       if (data.success) {
-        setDossierId(data.dossier.id)
+        setDossierIdDb(data.dossier.id)
         setDossierRef(data.dossier.reference)
-        // Store the purge date from the response
         if (data.dossier.datePurge) {
           setDatePurge(new Date(data.dossier.datePurge))
         }
@@ -111,24 +138,41 @@ export default function IntakePage({ params }: { params: Promise<{ dossierId: st
     }
   }
 
-  const handleUpload = async (type: string, file: File) => {
-    if (!dossierId) return
-    setUploading(type)
-    setUploadedDocs(prev => ({ ...prev, [type]: { name: file.name, status: 'uploading' } }))
+  const handleUpload = async (docType: string, file: File) => {
+    if (!dossierIdDb) return
+    setUploading(docType)
+    setUploadedDocs(prev => ({ ...prev, [docType]: { name: file.name, status: 'uploading' } }))
     try {
       const fd = new FormData()
       fd.append('file', file)
-      fd.append('dossierId', dossierId)
-      fd.append('type', type)
-      fd.append('pays', situation.pays)
+      fd.append('dossierId', dossierIdDb)
+      fd.append('type', docType)
+      fd.append('pays', situation.pays || 'FRANCE')
       const res = await fetch('/api/upload', { method: 'POST', body: fd })
       const data = await res.json()
-      setUploadedDocs(prev => ({ ...prev, [type]: { name: file.name, status: data.success ? 'ok' : 'error' } }))
+      setUploadedDocs(prev => ({ ...prev, [docType]: { name: file.name, status: data.success ? 'ok' : 'error' } }))
     } catch {
-      setUploadedDocs(prev => ({ ...prev, [type]: { name: file.name, status: 'error' } }))
+      setUploadedDocs(prev => ({ ...prev, [docType]: { name: file.name, status: 'error' } }))
     } finally {
       setUploading(null)
     }
+  }
+
+  // Écran d'erreur de session
+  if (error) {
+    return (
+      <div className="min-h-screen bg-pearl flex items-center justify-center p-6">
+        <Card className="max-w-md w-full p-8 text-center shadow-paper-xl">
+          <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+          <h1 className="font-serif text-xl font-bold text-navy mb-2">
+            Accès restreint
+          </h1>
+          <p className="text-navy/60 text-sm">
+            Accessible uniquement via le lien de votre avocat.
+          </p>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -137,18 +181,24 @@ export default function IntakePage({ params }: { params: Promise<{ dossierId: st
       <header className="bg-white/80 backdrop-blur-md border-b border-pearl-300 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-navy rounded-lg flex items-center justify-center">
-              <Scale className="w-5 h-5 text-gold" />
+            <div className="w-9 h-9 bg-navy rounded-lg flex items-center justify-center">
+              <Scale className="w-4 h-4 text-gold" />
             </div>
-            <span className="font-serif font-bold text-xl text-navy">Lexia</span>
+            <span className="font-serif font-bold text-lg text-navy">Lexia</span>
+            {avocatNom && (
+              <span className="hidden md:inline text-navy/50 text-sm ml-2">
+                · Dossier pour Maître {avocatNom}
+              </span>
+            )}
           </div>
           {dossierRef && (
             <div className="flex items-center gap-3">
-              <Badge variant="outline" className="border-navy/20 text-navy">Réf: {dossierRef}</Badge>
-              {/* Security countdown badge */}
+              <Badge variant="outline" className="border-navy/20 text-navy font-mono">
+                {dossierRef}
+              </Badge>
               <div className="flex items-center gap-1.5 text-xs text-navy/50 bg-pearl px-3 py-1.5 rounded-full">
                 <Shield className="w-3.5 h-3.5" />
-                <span>{datePurge ? `Purge dans ${Math.max(0, Math.ceil((new Date(datePurge).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} jours` : 'Purge imminente'}</span>
+                <span>{datePurge ? `Suppression le ${new Date(datePurge).toLocaleDateString('fr-FR')}` : '—'}</span>
               </div>
             </div>
           )}
@@ -156,23 +206,89 @@ export default function IntakePage({ params }: { params: Promise<{ dossierId: st
       </header>
 
       <main className="container mx-auto px-4 py-10 max-w-2xl">
-        {/* Progressive Stepper */}
-        <div className="mb-10">
-          <div className="flex justify-between text-xs font-medium mb-3">
-            <span className={`${step === 'info' ? 'text-navy' : 'text-navy/40'}`}>1. Identité</span>
-            <span className={`${step === 'situation' ? 'text-navy' : 'text-navy/40'}`}>2. Situation</span>
-            <span className={`${step === 'documents' ? 'text-navy' : 'text-navy/40'}`}>3. Documents</span>
+        {/* Barre de progression */}
+        {visibleSteps.length > 0 && (
+          <div className="mb-10">
+            <div className="flex justify-between text-xs font-medium mb-3">
+              {visibleSteps.map((s, i) => (
+                <span 
+                  key={s} 
+                  className={`${
+                    i < currentStepIndex ? 'text-gold' : 
+                    i === currentStepIndex ? 'text-navy' : 'text-navy/40'
+                  }`}
+                >
+                  {i < currentStepIndex && <CheckCircle2 className="w-3 h-3 inline mr-1" />}
+                  {i + 1}. {s === 'domaine' ? 'Domaine' : s === 'info' ? 'Identité' : s === 'situation' ? 'Situation' : 'Documents'}
+                </span>
+              ))}
+            </div>
+            <Progress value={progress} className="h-1.5 bg-pearl-300" />
           </div>
-          <Progress value={progress} className="h-1.5 bg-pearl-300" />
-          <div className="h-1.5 bg-gradient-to-r from-gold to-gold-400 rounded-full mt-[-6px] transition-all duration-500" style={{ width: `${progress}%` }} />
-        </div>
+        )}
 
-        {/* Step 1: Personal Info */}
-        {step === 'info' && (
+        {/* Step: Domaine */}
+        {step === 'domaine' && (
           <Card className="border-pearl-300 shadow-paper">
             <CardHeader>
-              <CardTitle className="font-serif text-navy">Vos informations personnelles</CardTitle>
-              <CardDescription className="text-navy/60">Ces informations restent strictement confidentielles.</CardDescription>
+              <CardTitle className="font-serif text-navy">Votre domaine juridique</CardTitle>
+              <CardDescription className="text-navy/60">
+                La liste des documents s'adapte automatiquement à votre choix.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {DOMAINS.map((d) => {
+                  const isSelected = selectedDomainId === d.id
+                  return (
+                    <div
+                      key={d.id}
+                      className={`p-4 border rounded-xl cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-navy bg-white shadow-paper-lg'
+                          : 'border-pearl-300 bg-white hover:border-navy/30'
+                      }`}
+                      onClick={() => setSelectedDomainId(d.id)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{d.icon}</span>
+                        <div className="flex-1">
+                          <p className="font-serif font-semibold text-navy text-sm">{d.label}</p>
+                          <p className="text-xs text-navy/50">{d.description}</p>
+                        </div>
+                        {isSelected && <CheckCircle2 className="w-5 h-5 text-gold" />}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <Button 
+                className="w-full bg-navy hover:bg-navy-600" 
+                disabled={!selectedDomainId}
+                onClick={goNext}
+              >
+                Continuer <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step: Info */}
+        {step === 'info' && domain && (
+          <Card className="border-pearl-300 shadow-paper">
+            <CardHeader>
+              {/* Récap domaine */}
+              <div className="flex items-center gap-3 p-3 bg-pearl rounded-lg mb-4">
+                <span className="text-2xl">{domain.icon}</span>
+                <div>
+                  <p className="font-serif font-semibold text-navy">{domain.label}</p>
+                  <p className="text-xs text-navy/50">{domain.description}</p>
+                </div>
+              </div>
+              <CardTitle className="font-serif text-navy">Vos informations</CardTitle>
+              <CardDescription className="text-navy/60">
+                Ces informations restent strictement confidentielles.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
@@ -209,225 +325,181 @@ export default function IntakePage({ params }: { params: Promise<{ dossierId: st
                 <Label className="text-navy font-medium">Téléphone</Label>
                 <Input 
                   type="tel" 
-                  placeholder="+33 6 12 34 56 78" 
+                  placeholder="+33 6 00 00 00 00" 
                   value={info.telephone} 
                   onChange={e => setInfo({ ...info, telephone: e.target.value })}
                   className="border-pearl-300 focus:border-gold focus:ring-gold"
                 />
               </div>
-              <Button 
-                className="w-full bg-navy hover:bg-navy-600" 
-                onClick={() => setStep('situation')} 
-                disabled={!canContinue}
-              >
-                Continuer
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
+              
+              <div className="flex gap-3 pt-2">
+                {selectedDomainId && sessionStorage.getItem('domaine') === null && (
+                  <Button variant="outline" onClick={goBack} className="border-navy/20 text-navy hover:bg-pearl">
+                    <ArrowLeft className="w-4 h-4 mr-1" /> Retour
+                  </Button>
+                )}
+                <Button 
+                  className="flex-1 bg-navy hover:bg-navy-600" 
+                  disabled={!canContinueInfo}
+                  onClick={goNext}
+                >
+                  Continuer <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Step 2: Situation */}
-        {step === 'situation' && (
+        {/* Step: Situation */}
+        {step === 'situation' && domain && (
           <Card className="border-pearl-300 shadow-paper">
             <CardHeader>
-              <CardTitle className="font-serif text-navy">Votre situation conjugale</CardTitle>
-              <CardDescription className="text-navy/60">Ces informations permettent d'adapter l'analyse juridique.</CardDescription>
+              <CardTitle className="font-serif text-navy">Votre situation</CardTitle>
+              <CardDescription className="text-navy/60">
+                Ces informations permettent d'adapter l'analyse juridique.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="space-y-2">
-                <Label className="text-navy font-medium">Pays de résidence</Label>
-                <Select value={situation.pays} onValueChange={v => setSituation({ ...situation, pays: v })}>
-                  <SelectTrigger className="border-pearl-300 focus:border-gold"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="FRANCE">🇫🇷 France</SelectItem>
-                    <SelectItem value="BELGIQUE">🇧🇪 Belgique</SelectItem>
-                    <SelectItem value="SUISSE">🇨🇭 Suisse</SelectItem>
-                    <SelectItem value="LUXEMBOURG">🇱🇺 Luxembourg</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {domain.champs.map((champ: ChampSituation) => (
+                <div key={champ.id} className="space-y-2">
+                  <Label className="text-navy font-medium">
+                    {champ.label}
+                    {champ.required && <span className="text-gold ml-1">*</span>}
+                  </Label>
+                  
+                  {champ.type === 'select' && champ.options && (
+                    <Select 
+                      value={situation[champ.id] || ''} 
+                      onValueChange={v => setSituation({ ...situation, [champ.id]: v })}
+                    >
+                      <SelectTrigger className="border-pearl-300 focus:border-gold">
+                        <SelectValue placeholder={champ.placeholder || 'Sélectionner...'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {champ.options.map((opt: string) => (
+                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  
+                  {champ.type === 'text' && (
+                    <Input 
+                      type="text"
+                      placeholder={champ.placeholder}
+                      value={situation[champ.id] || ''}
+                      onChange={e => setSituation({ ...situation, [champ.id]: e.target.value })}
+                      className="border-pearl-300 focus:border-gold focus:ring-gold"
+                    />
+                  )}
+                  
+                  {champ.type === 'date' && (
+                    <Input 
+                      type="date"
+                      value={situation[champ.id] || ''}
+                      onChange={e => setSituation({ ...situation, [champ.id]: e.target.value })}
+                      className="border-pearl-300 focus:border-gold focus:ring-gold"
+                    />
+                  )}
+                  
+                  {champ.type === 'number' && (
+                    <Input 
+                      type="number"
+                      min={0}
+                      placeholder={champ.placeholder}
+                      value={situation[champ.id] || ''}
+                      onChange={e => setSituation({ ...situation, [champ.id]: e.target.value })}
+                      className="border-pearl-300 focus:border-gold focus:ring-gold"
+                    />
+                  )}
+                </div>
+              ))}
 
-              <div className="space-y-2">
-                <Label className="text-navy font-medium">Type de procédure</Label>
-                <Select value={situation.typeProcedure} onValueChange={v => setSituation({ ...situation, typeProcedure: v })}>
-                  <SelectTrigger className="border-pearl-300 focus:border-gold"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="divorce_consentement_mutuel">Consentement mutuel</SelectItem>
-                    <SelectItem value="divorce_acceptation_rupture">Acceptation de la rupture</SelectItem>
-                    <SelectItem value="divorce_faute">Divorce pour faute</SelectItem>
-                    <SelectItem value="divorce_alteration_lien">Altération du lien conjugal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-navy font-medium">Régime matrimonial</Label>
-                <Select value={situation.regimeMatrimonial} onValueChange={v => setSituation({ ...situation, regimeMatrimonial: v })}>
-                  <SelectTrigger className="border-pearl-300 focus:border-gold"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="communaute_legale">Communauté légale</SelectItem>
-                    <SelectItem value="separation_biens">Séparation de biens</SelectItem>
-                    <SelectItem value="communaute_universelle">Communauté universelle</SelectItem>
-                    <SelectItem value="participation_acquets">Participation aux acquêts</SelectItem>
-                    <SelectItem value="inconnu">Je ne sais pas</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-navy font-medium">Date de mariage</Label>
-                <Input 
-                  type="date" 
-                  value={situation.dateMariage} 
-                  onChange={e => setSituation({ ...situation, dateMariage: e.target.value })}
-                  className="border-pearl-300 focus:border-gold focus:ring-gold"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-navy font-medium">Nombre d'enfants mineurs</Label>
-                <Select value={situation.nombreEnfants} onValueChange={v => setSituation({ ...situation, nombreEnfants: v })}>
-                  <SelectTrigger className="border-pearl-300 focus:border-gold"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">Aucun</SelectItem>
-                    <SelectItem value="1">1 enfant</SelectItem>
-                    <SelectItem value="2">2 enfants</SelectItem>
-                    <SelectItem value="3">3 enfants</SelectItem>
-                    <SelectItem value="4">4 ou plus</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-navy font-medium">Bien immobilier commun ?</Label>
-                <Select value={situation.bienImmobilier} onValueChange={v => setSituation({ ...situation, bienImmobilier: v })}>
-                  <SelectTrigger className="border-pearl-300 focus:border-gold"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="oui">Oui</SelectItem>
-                    <SelectItem value="non">Non</SelectItem>
-                    <SelectItem value="en_cours">En cours d'acquisition</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-navy font-medium">Accord amiable possible ?</Label>
-                <Select value={situation.accordAmiable} onValueChange={v => setSituation({ ...situation, accordAmiable: v })}>
-                  <SelectTrigger className="border-pearl-300 focus:border-gold"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="oui">Oui, nous sommes en accord</SelectItem>
-                    <SelectItem value="partiel">Partiellement</SelectItem>
-                    <SelectItem value="non">Non, situation conflictuelle</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Bannière RGPD */}
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-100 rounded-lg text-green-700 text-sm">
+                <Shield className="w-4 h-4" />
+                <span>Vos données sont chiffrées et supprimées automatiquement après 7 jours.</span>
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => setStep('info')} className="border-navy/20 text-navy hover:bg-pearl">
+                <Button variant="outline" onClick={goBack} className="border-navy/20 text-navy hover:bg-pearl">
                   <ArrowLeft className="w-4 h-4 mr-1" /> Retour
                 </Button>
-                <Button className="flex-1 bg-navy hover:bg-navy-600" onClick={handleCreateDossier} disabled={loading}>
+                <Button 
+                  className="flex-1 bg-navy hover:bg-navy-600" 
+                  disabled={!canContinueSituation || loading}
+                  onClick={handleCreateDossier}
+                >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  {loading ? 'Création...' : <>Continuer <ArrowRight className="w-4 h-4 ml-2" /></>}
+                  {loading ? 'Création...' : <>Passer au paiement <ArrowRight className="w-4 h-4 ml-2" /></>}
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Step 3: Documents */}
-        {step === 'documents' && (
+        {/* Step: Documents */}
+        {step === 'documents' && domain && (
           <Card className="border-pearl-300 shadow-paper">
             <CardHeader>
-              <CardTitle className="font-serif text-navy">Téléversez vos documents</CardTitle>
+              {zipSent && (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-100 rounded-lg mb-4">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-800">Dossier complet !</p>
+                    <p className="text-xs text-green-600">Votre avocat a reçu tous vos documents par email.</p>
+                  </div>
+                </div>
+              )}
+              <CardTitle className="font-serif text-navy">Vos documents</CardTitle>
               <CardDescription className="text-navy/60">
-                Les documents obligatoires sont notifiés. Formats acceptés : PDF, JPG, PNG (max 10 Mo).
+                {Object.keys(uploadedDocs).length} document(s) déposé(s) · {requiredDocs.filter(d => uploadedDocs[d.type]?.status === 'ok').length}/{requiredDocs.length} obligatoires
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {DOCUMENT_TYPES.map(doc => {
-                const uploaded = uploadedDocs[doc.type]
-                const isUploading = uploading === doc.type
-                const docLink = DOCUMENT_LINKS[doc.type]
-                
-                return (
-                  <div key={doc.type} className="border border-pearl-300 rounded-xl p-4 bg-white hover:shadow-paper transition-shadow">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <FileText className="w-4 h-4 text-navy/40 flex-shrink-0" />
-                        <span className="text-sm font-medium text-navy">{doc.label}</span>
-                        {doc.exige && <Badge variant="secondary" className="bg-gold/10 text-gold text-xs">Requis</Badge>}
-                      </div>
-                      {uploaded?.status === 'ok' && <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />}
-                      {uploaded?.status === 'error' && <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />}
-                    </div>
-                    
-                    {/* Direct access button for "Zéro Recherche" */}
-                    {docLink && !uploaded?.status && (
-                      <a 
-                        href={docLink.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-gold hover:text-gold-600 mb-3 transition-colors"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        Récupérer sur {docLink.label} ↗
-                      </a>
-                    )}
-                    
-                    {isUploading ? (
-                      // AI Scan Animation
-                      <div className="relative overflow-hidden bg-navy/5 rounded-lg py-4">
-                        <div className="absolute inset-0 scan-animation bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
-                        <div className="flex items-center justify-center gap-2 text-sm text-navy">
-                          <Sparkles className="w-4 h-4 text-gold animate-pulse" />
-                          <span>Analyse IA en cours...</span>
-                        </div>
-                      </div>
-                    ) : uploaded?.status === 'ok' ? (
-                      <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">
-                        <CheckCircle className="w-4 h-4" />
-                        <span className="flex-1 truncate">{uploaded.name}</span>
-                        <label className="cursor-pointer text-xs underline text-navy/50 flex-shrink-0 hover:text-navy">
-                          Remplacer
-                          <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
-                            onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(doc.type, f) }} />
-                        </label>
-                      </div>
-                    ) : (
-                      <label className="flex items-center gap-3 border-2 border-dashed border-pearl-300 rounded-lg p-4 cursor-pointer hover:border-gold hover:bg-pearl/30 transition-all group">
-                        <Upload className="w-5 h-5 text-navy/40 group-hover:text-gold transition-colors" />
-                        <span className="text-sm text-navy/60 group-hover:text-navy">
-                          {uploaded?.status === 'error' ? '⚠️ Erreur — Cliquez pour réessayer' : 'Cliquez pour sélectionner'}
-                        </span>
-                        <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
-                          onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(doc.type, f) }}
-                          disabled={!!uploading} />
-                      </label>
-                    )}
-                  </div>
-                )
-              })}
+              {/* Section obligatoires */}
+              <div>
+                <p className="text-xs font-medium text-navy/50 uppercase mb-2">Obligatoires *</p>
+                {requiredDocs.map((doc: DocumentConfig) => (
+                  <DocCard 
+                    key={doc.type}
+                    doc={doc}
+                    uploaded={uploadedDocs[doc.type]}
+                    uploading={uploading === doc.type}
+                    onUpload={(file) => handleUpload(doc.type, file)}
+                  />
+                ))}
+              </div>
+
+              {/* Section complémentaires */}
+              {domain.documents.filter(d => !d.exige).length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-navy/50 uppercase mb-2">Complémentaires</p>
+                  {domain.documents.filter(d => !d.exige).map((doc: DocumentConfig) => (
+                    <DocCard 
+                      key={doc.type}
+                      doc={doc}
+                      uploaded={uploadedDocs[doc.type]}
+                      uploading={uploading === doc.type}
+                      onUpload={(file) => handleUpload(doc.type, file)}
+                    />
+                  ))}
+                </div>
+              )}
 
               <div className="pt-4 border-t border-pearl-200">
-                <div className="flex items-center justify-between mb-4 text-sm">
-                  <span className="text-navy/60">Documents obligatoires :</span>
-                  <span className="font-semibold text-navy">
-                    {DOCUMENT_TYPES.filter(d => d.exige && uploadedDocs[d.type]?.status === 'ok').length}
-                    /{DOCUMENT_TYPES.filter(d => d.exige).length}
-                  </span>
-                </div>
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep('situation')} className="border-navy/20 text-navy hover:bg-pearl">
+                  <Button variant="outline" onClick={goBack} className="border-navy/20 text-navy hover:bg-pearl">
                     <ArrowLeft className="w-4 h-4 mr-1" /> Retour
                   </Button>
                   <Button
                     className="flex-1 bg-navy hover:bg-navy-600"
-                    onClick={() => dossierId && router.push(`/payment?dossierId=${dossierId}`)}
-                    disabled={!requiredDone || !!uploading}
+                    disabled={!requiredDone}
+                    onClick={() => dossierIdDb && router.push(`/payment?dossierId=${dossierIdDb}`)}
                   >
-                    {!requiredDone ? 'Ajoutez les documents requis' : <>Passer au paiement <ArrowRight className="w-4 h-4 ml-2" /></>}
+                    {!requiredDone 
+                      ? `Ajoutez ${requiredDocs.filter(d => !uploadedDocs[d.type]?.status === 'ok').length} document(s) obligatoire(s)`
+                      : <>Passer au paiement <ArrowRight className="w-4 h-4 ml-2" /></>}
                   </Button>
                 </div>
               </div>
@@ -435,6 +507,91 @@ export default function IntakePage({ params }: { params: Promise<{ dossierId: st
           </Card>
         )}
       </main>
+    </div>
+  )
+}
+
+// Composant DocCard
+function DocCard({ 
+  doc, 
+  uploaded, 
+  uploading, 
+  onUpload 
+}: { 
+  doc: DocumentConfig
+  uploaded?: { name: string; status: 'uploading' | 'ok' | 'error' }
+  uploading: boolean
+  onUpload: (file: File) => void
+}) {
+  return (
+    <div className={`border rounded-xl p-4 bg-white mb-3 transition-all ${
+      uploaded?.status === 'ok' ? 'border-green-200' :
+      uploaded?.status === 'error' ? 'border-red-200' :
+      'border-pearl-300'
+    }`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          {uploading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-navy/40" />
+          ) : uploaded?.status === 'ok' ? (
+            <CheckCircle className="w-4 h-4 text-green-600" />
+          ) : uploaded?.status === 'error' ? (
+            <AlertCircle className="w-4 h-4 text-red-500" />
+          ) : (
+            <FileText className="w-4 h-4 text-navy/40" />
+          )}
+          <span className="text-sm font-medium text-navy">
+            {doc.label}
+            {doc.exige && <span className="text-gold ml-1">*</span>}
+          </span>
+        </div>
+      </div>
+
+      {doc.hint && !uploaded?.status && (
+        <p className="text-xs text-navy/50 mb-2">{doc.hint}</p>
+      )}
+
+      {doc.link && !uploaded?.status && (
+        <a 
+          href={doc.link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-gold hover:underline mb-3"
+        >
+          {doc.link.label} <ExternalLink className="w-3 h-3" />
+        </a>
+      )}
+
+      {uploading ? (
+        <div className="bg-pearl rounded-lg py-3 text-center text-sm text-navy/60">
+          <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
+          Upload en cours...
+        </div>
+      ) : uploaded?.status === 'ok' ? (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-green-600 truncate flex-1">{uploaded.name}</span>
+          <label className="text-xs underline cursor-pointer text-navy/50 hover:text-navy">
+            Changer
+            <input 
+              type="file" 
+              accept="image/*,.pdf" 
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f) }}
+            />
+          </label>
+        </div>
+      ) : (
+        <label className="flex items-center gap-3 border-2 border-dashed border-pearl-300 rounded-lg p-4 cursor-pointer hover:border-gold hover:bg-pearl/30 transition-all">
+          <Upload className="w-5 h-5 text-navy/40" />
+          <span className="text-sm text-navy/60">Cliquez pour sélectionner</span>
+          <input 
+            type="file" 
+            accept="image/*,.pdf" 
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f) }}
+          />
+        </label>
+      )}
     </div>
   )
 }

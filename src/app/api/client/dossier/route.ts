@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Pays } from '@prisma/client'
+import { getDomainById } from '@/lib/domains'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
     
-    // Get available avocat for distribution
     if (action === 'getAvocat') {
       const avocat = await prisma.avocat.findFirst({
         where: { isActive: true },
@@ -31,7 +31,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, nom, prenom, telephone, pays: paysClient, dateMariage, nombreEnfants, typeProcedure, avocatId } = body
+    const { 
+      email, nom, prenom, telephone, pays: paysClient, 
+      dateMariage, nombreEnfants, typeProcedure, avocatId,
+      domaine, situationJSON, linkToken 
+    } = body
 
     if (!email || !nom || !prenom) {
       return NextResponse.json(
@@ -39,6 +43,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Get domain config for prefix
+    const domainConfig = domaine ? getDomainById(domaine) : null
+    const prefix = domainConfig?.prefix || 'DOS'
 
     // Find or create default avocat if not provided
     let assignedAvocatId = avocatId
@@ -71,19 +79,34 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create dossier
+    // Resolve linkToken to get lienId if provided
+    let lienId = null
+    if (linkToken) {
+      const lien = await prisma.lien.findUnique({
+        where: { token: linkToken }
+      })
+      if (lien) {
+        lienId = lien.id
+      }
+    }
+
+    // Create dossier with domaine field
     const dossier = await prisma.dossier.create({
       data: {
-        reference: `DIV-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`,
+        reference: `${prefix}-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`,
         avocatId: assignedAvocatId,
         clientId: client.id,
+        lienId: lienId,
+        domaine: domaine || null,
         pays: paysClient || Pays.FRANCE,
-        typeProcedure: typeProcedure || 'divorce',
+        typeProcedure: typeProcedure || null,
         dateMariage: dateMariage ? new Date(dateMariage) : null,
         nombreEnfants: nombreEnfants || 0,
+        analyseIA: situationJSON || null,
         montantTTC: 149.00,
         fraisGestion: 30.00,
-        datePurge: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        datePurge: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        statut: 'EN_ATTENTE_PAIEMENT'
       }
     })
 

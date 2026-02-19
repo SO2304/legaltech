@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useRouter } from 'next/navigation'
-import { Scale, Brain, Shield, ChevronRight, CheckCircle2 } from 'lucide-react'
+import { Scale, Brain, Shield, ChevronRight, CheckCircle2, Link2, FileText, Mail, Package } from 'lucide-react'
+import { DOMAINS } from '@/lib/domains'
 
 export default function LandingPage() {
   const router = useRouter()
@@ -14,10 +15,28 @@ export default function LandingPage() {
     fetch('/api/geolocation').catch(() => {})
   }, [])
 
+  // 4 étapes selon spec
   const steps = [
-    { n: '1', titre: 'Remplissez le questionnaire', desc: 'Vos informations et situation conjugale.' },
-    { n: '2', titre: 'Téléversez vos documents', desc: 'Carte identité, acte de mariage, bulletins de salaire...' },
-    { n: '3', titre: 'Obtenez votre analyse', desc: 'Un avocat examine votre dossier et vous envoie l\'analyse complète.' },
+    { 
+      icon: Scale, 
+      title: 'Votre avocat crée un lien', 
+      description: 'Maître génère un lien personnalisé pour vous.' 
+    },
+    { 
+      icon: Link2, 
+      title: 'Vous complétez le questionnaire', 
+      description: 'Via le lien, vous remplissez votre situation juridique.' 
+    },
+    { 
+      icon: FileText, 
+      title: 'Vous déposez vos documents', 
+      description: 'Photos ou scans de vos pièces justificatives.' 
+    },
+    { 
+      icon: Package, 
+      title: 'Votre avocat reçoit le ZIP', 
+      description: 'Package complet envoyé automatiquement par email.' 
+    },
   ]
 
   return (
@@ -26,10 +45,10 @@ export default function LandingPage() {
       <header className="bg-white/80 backdrop-blur-md border-b border-pearl-300 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-navy rounded-lg flex items-center justify-center">
-              <Scale className="w-5 h-5 text-gold" />
+            <div className="w-9 h-9 bg-navy rounded-lg flex items-center justify-center">
+              <Scale className="w-4 h-4 text-gold" />
             </div>
-            <span className="font-serif font-bold text-xl text-navy">Lexia</span>
+            <span className="font-serif font-bold text-lg text-navy">Lexia</span>
           </div>
           <Button
             variant="ghost"
@@ -43,25 +62,40 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-6 pt-20 pb-16">
-        <div className="max-w-3xl mx-auto text-center space-y-8 animate-fade-in">
-          <h1 className="font-serif text-5xl md:text-6xl font-bold text-navy leading-tight">
-            Analyse juridique de votre{' '}
-            <span className="text-gold">divorce</span>
+      <section className="container mx-auto px-6 pt-16 pb-12">
+        <div className="max-w-3xl mx-auto text-center space-y-6 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-navy/5 rounded-full text-navy/60 text-sm">
+            <Scale className="w-4 h-4 text-gold" />
+            <span>Tous domaines juridiques couverts</span>
+          </div>
+          <h1 className="font-serif text-4xl md:text-5xl font-bold text-navy leading-tight">
+            Votre analyse juridique
+            <span className="text-gold"> personnalisée</span>
           </h1>
-          <p className="text-xl text-navy/60 max-w-xl mx-auto leading-relaxed">
-            Basée exclusivement sur les textes de loi officiels, propulsée par l'intelligence artificielle.
+          <p className="text-lg text-navy/60 max-w-xl mx-auto leading-relaxed">
+            Service d'analyse juridique assisté par intelligence artificielle. 
+            Basé sur les textes de loi officiels.
           </p>
-          <div className="pt-6">
-            <Button
-              size="lg"
-              variant="gold"
-              className="text-base px-10 py-6"
-              onClick={() => router.push('/intake/new-' + Date.now())}
-            >
-              Commencer mon dossier
-              <ChevronRight className="w-5 h-5 ml-2" />
-            </Button>
+          <p className="text-sm text-navy/40 italic pt-2">
+            Accessible uniquement via le lien de votre avocat
+          </p>
+        </div>
+      </section>
+
+      {/* Domain Grid - Read only per spec */}
+      <section className="container mx-auto px-6 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {DOMAINS.map((domain) => (
+              <Card 
+                key={domain.id}
+                className="p-4 bg-white border-pearl-300 shadow-paper text-center cursor-default hover:shadow-paper-lg transition-all duration-300"
+              >
+                <div className="text-3xl mb-2">{domain.icon}</div>
+                <h3 className="font-serif font-semibold text-navy text-sm">{domain.label}</h3>
+                <p className="text-xs text-navy/50 mt-1 line-clamp-2">{domain.description}</p>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
@@ -74,14 +108,14 @@ export default function LandingPage() {
               <Brain className="w-6 h-6 text-gold" />
             </div>
             <h3 className="font-serif font-semibold text-navy mb-2">Analyse IA</h3>
-            <p className="text-sm text-navy/60">Extraction automatique des données via Claude Vision OCR.</p>
+            <p className="text-sm text-navy/60">Extraction automatique des données via OCR intelligent.</p>
           </Card>
           <Card className="p-6 bg-white border-pearl-300 shadow-paper hover:shadow-paper-lg transition-shadow duration-300">
             <div className="w-12 h-12 bg-navy rounded-xl flex items-center justify-center mb-4">
               <Scale className="w-6 h-6 text-gold" />
             </div>
             <h3 className="font-serif font-semibold text-navy mb-2">Base légale stricte</h3>
-            <p className="text-sm text-navy/60">Chaque réponse cite l'article exact du code civil applicable.</p>
+            <p className="text-sm text-navy/60">Chaque réponse cite l'article exact du code applicable.</p>
           </Card>
           <Card className="p-6 bg-white border-pearl-300 shadow-paper hover:shadow-paper-lg transition-shadow duration-300">
             <div className="w-12 h-12 bg-navy rounded-xl flex items-center justify-center mb-4">
@@ -93,38 +127,26 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How it works Section */}
+      {/* How it works - 4 steps per spec */}
       <section className="bg-white py-16">
         <div className="container mx-auto px-6">
           <div className="max-w-3xl mx-auto">
-            <h2 className="font-serif text-3xl font-bold text-navy text-center mb-12">Comment ça fonctionne</h2>
-            <div className="space-y-4">
-              {steps.map((s, i) => (
+            <h2 className="font-serif text-3xl font-bold text-navy text-center mb-12">Comment ça marche</h2>
+            <div className="grid md:grid-cols-2 gap-6">
+              {steps.map((step, i) => (
                 <div 
-                  key={s.n} 
-                  className="flex items-start gap-5 bg-pearl p-5 rounded-xl border border-pearl-300 hover:shadow-paper transition-all duration-300"
-                  style={{ animationDelay: `${i * 100}ms` }}
+                  key={i}
+                  className="flex items-start gap-4 bg-pearl p-5 rounded-xl border border-pearl-300 hover:shadow-paper transition-all duration-300"
                 >
-                  <div className="w-10 h-10 rounded-full bg-navy text-white flex items-center justify-center font-serif font-bold text-sm flex-shrink-0">
-                    {s.n}
+                  <div className="w-10 h-10 rounded-full bg-navy text-white flex items-center justify-center flex-shrink-0">
+                    <step.icon className="w-5 h-5 text-gold" />
                   </div>
                   <div>
-                    <h3 className="font-serif font-semibold text-navy">{s.titre}</h3>
-                    <p className="text-sm text-navy/60 mt-1">{s.desc}</p>
+                    <h3 className="font-serif font-semibold text-navy text-sm">{step.title}</h3>
+                    <p className="text-xs text-navy/60 mt-1">{step.description}</p>
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="text-center mt-10">
-              <Button
-                size="lg"
-                variant="gold"
-                className="text-base px-10"
-                onClick={() => router.push('/intake/new-' + Date.now())}
-              >
-                Commencer maintenant
-                <ChevronRight className="w-5 h-5 ml-2" />
-              </Button>
             </div>
           </div>
         </div>
@@ -145,13 +167,17 @@ export default function LandingPage() {
             <CheckCircle2 className="w-5 h-5 text-gold" />
             <span className="text-sm">Paiement sécurisé Stripe</span>
           </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-gold" />
+            <span className="text-sm">Conforme RGPD</span>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="border-t border-pearl-300 py-8 bg-white">
         <div className="container mx-auto px-6 text-center text-sm text-navy/40 font-sans">
-          © 2026 Lexia · Conforme RGPD · Hébergement Europe
+          © 2026 Lexia
         </div>
       </footer>
     </div>
